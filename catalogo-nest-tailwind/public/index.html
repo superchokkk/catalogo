@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Catálogo de Produtos</title>
+    <link rel="stylesheet" href="/css/style.css" />
+    <link rel="stylesheet" href="/mycss/mystyle.css" />
+    <script src="/js/script.js" type="module" defer></script>
+    <script src="/js/updatescript.js" type="module" defer></script>
+    <script src="/js/consultarscript.js" type="module" defer></script>
+</head>
+
+<body class="min-h-screen bg-slate-50 text-slate-900">
+    <main class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <header class="mb-8 flex items-center justify-between">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tight">Catálogo de Produtos</h1>
+            </div>
+            <button id="loginButton"
+                class="px-4 py-2 rounded-md bg-white text-black font-medium hover:bg-blue-700 hover:text-white transition"
+                onclick="document.getElementById('loginModal').classList.remove('hidden')">
+                Login
+            </button>
+
+            <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+                <div class="bg-white rounded-lg shadow-lg w-96 p-6">
+                    <h2 class="text-xl font-bold mb-4">Login</h2>
+                    <form id="loginForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Nome</label>
+                            <input type="text" name="nome"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                                placeholder="Seu nome" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Email</label>
+                            <input type="email" name="email"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                                placeholder="seu@email.com" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Senha</label>
+                            <input type="password" name="senha"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                                placeholder="********" />
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button type="button"
+                                class="px-4 py-2 rounded-md bg-gray-300 text-slate-700 hover:bg-gray-400"
+                                onclick="fecharELimparForm('loginModal', 'loginForm')">
+                                Cancelar
+                            </button>
+                            <button type="submit" class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                                Entrar
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </header>
+        <button id="addButton" class="painelC" style="display: none;"
+            onclick="document.getElementById('addModal').classList.remove('hidden')">
+            Adicionar Produto
+        </button>
+        <div id="addModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+            <div class="bg-white rounded-lg shadow-lg w-96 p-6">
+                <h2 class="text-xl font-bold mb-4">Adicionar Produto</h2>
+                <form id="addForm" class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Nome</label>
+                        <input type="text" name="nome"
+                            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                            placeholder="Nome do produto" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Descrição</label>
+                        <input type="text" name="descricao"
+                            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                            placeholder="Descrição do produto" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Preço</label>
+                        <input type="text" name="preco" inputmode="decimal" pattern="[0-9]+([,\.][0-9]{1,2})?"
+                            class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600"
+                            placeholder="Preço do produto" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Imagens do Produto</label>
+                        <input type="file" name="imagens" id="imageInput" accept="image/*" multiple class="mt-1 block w-full text-sm text-slate-500
+                            file:mr-4 file:py-2 file:px-4
+                            file:rounded-md file:border-0
+                            file:text-sm file:font-semibold
+                            file:bg-blue-50 file:text-blue-700
+                            hover:file:bg-blue-100" />
+                        <div id="previewContainer" class="mt-2 grid grid-cols-3 gap-2"></div>
+                    </div>
+                    <div class="flex justify-end space-x-2">
+                        <button type="button" class="px-4 py-2 rounded-md bg-gray-300 text-slate-700 hover:bg-gray-400"
+                            onclick="fecharELimparFormFotos('addModal', 'addForm')">
+                            Cancelar
+                        </button>
+                        <button type="submit" class="px-4 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+                            Adicionar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div id="upModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div class="bg-white rounded-lg shadow-lg w-96 max-w-md modal-container">
+                <div class="p-6 pb-4 border-b">
+                    <h2 class="text-xl font-bold text-slate-800">Modificar produto</h2>
+                </div>
+                <div class="form-scrollable custom-scrollbar p-6">
+                    <form id="upForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Nome</label>
+                            <input type="text" name="nome" id="upNome"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                placeholder="Nome do produto" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Descrição</label>
+                            <textarea name="descricao" id="upDescricao" rows="3"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                placeholder="Descrição detalhada do produto"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Preço</label>
+                            <input type="text" name="preco" inputmode="decimal" pattern="[0-9]+([,\.][0-9]{1,2})?"
+                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
+                                placeholder="0,00" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Imagens do Produto</label>
+                            <input type="file" id="upImageInput" accept="image/*" multiple
+                                class="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+
+                            <div id="upPreviewContainer" class="mt-4 flex flex-col gap-3">
+                                <div
+                                    class="h-20 bg-slate-100 rounded border-dashed border-2 border-slate-300 flex items-center justify-center text-xs text-slate-400">
+                                    Preview</div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex justify-end space-x-2 p-6 border-t bg-slate-50 rounded-b-lg">
+                    <button type="button"
+                        class="px-4 py-2 rounded-md bg-gray-200 text-slate-700 font-medium hover:bg-gray-300 transition-colors"
+                        onclick="fecharELimparEdicao()">
+                        Cancelar
+                    </button>
+                    <button type="submit" form="upForm"
+                        class="px-4 py-2 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm">
+                        Salvar Alterações
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div id="descModal" role="dialog" aria-modal="true">
+            <div class="modal-container">
+                <!-- ── ESQUERDO: imagens ── -->
+                <div class="panel-images">
+                    <div class="main-image-wrap" id="descMainImgWrap">
+                        <div class="placeholder-img" id="descMainPlaceholder">Img 1</div>
+                        <img id="descMainImg" src="" alt="Imagem principal do produto" style="display:none;" />
+                    </div>
+
+                    <div class="carousel-row">
+                        <div class="carousel-thumbs" id="descThumbsContainer"></div>
+                        <button class="carousel-btn" id="descScrollRight" title="Ver mais">›</button>
+                    </div>
+
+                    <input type="file" id="descImageInput" accept="image/*" multiple style="display:none;" />
+                </div>
+
+                <!-- ── DIREITO: informações ── -->
+                <div class="panel-info">
+                    <form id="descPainel" style="display:contents;">
+
+                        <div class="name-bar">
+                            <input type="text" name="nome" id="descNome" placeholder="produto.nome"
+                                aria-label="Nome do produto" readonly />
+                        </div>
+                        <div class="desc-area">
+                            <textarea name="descricao" id="descDescricao" placeholder="produto.descricao"
+                                aria-label="Descrição do produto" readonly></textarea>
+                        </div>
+                        <div class="extra-fields">
+                            <label>
+                                Preço
+                                <input type="text" name="preco" id="descPreco" placeholder="0,00" readonly />
+                            </label>
+                        </div>
+
+                        <div class="action-bar">
+                            <button type="button" class="btn-consult" id="btnConsult">
+                                Consulte-nos
+                            </button>
+                            <button type="button" class="btn-cancel" onclick="fecharModalConsulta()">
+                                Fechar
+                            </button>
+                        </div>
+
+                    </form>
+                </div>
+
+            </div>
+        </div>
+        <p id="status" class="mb-6 text-sm text-slate-600"></p>
+
+        <section id="catalogo" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></section>
+    </main>
+</body>
+
+</html>
