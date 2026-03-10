@@ -163,8 +163,10 @@
 
         <div id="descModal" role="dialog" aria-modal="true">
             <div class="modal-container">
-                <!-- ── ESQUERDO: imagens ── -->
+
+                <!-- ESQUERDO: imagens -->
                 <div class="panel-images">
+
                     <div class="main-image-wrap" id="descMainImgWrap">
                         <div class="placeholder-img" id="descMainPlaceholder">Img 1</div>
                         <img id="descMainImg" src="" alt="Imagem principal do produto" style="display:none;" />
@@ -178,31 +180,37 @@
                     <input type="file" id="descImageInput" accept="image/*" multiple style="display:none;" />
                 </div>
 
-                <!-- ── DIREITO: informações ── -->
+                <!-- DIREITO: informações -->
                 <div class="panel-info">
+
+                    <!-- Botão fechar no canto superior direito -->
+                    <button class="modal-close-btn" onclick="fecharModalConsulta()" title="Fechar">✕</button>
+
                     <form id="descPainel" style="display:contents;">
 
+                        <!-- Nome -->
                         <div class="name-bar">
                             <input type="text" name="nome" id="descNome" placeholder="produto.nome"
                                 aria-label="Nome do produto" readonly />
                         </div>
+
+                        <!-- Descrição -->
                         <div class="desc-area">
                             <textarea name="descricao" id="descDescricao" placeholder="produto.descricao"
                                 aria-label="Descrição do produto" readonly></textarea>
                         </div>
-                        <div class="extra-fields">
-                            <label>
-                                Preço
-                                <input type="text" name="preco" id="descPreco" placeholder="0,00" readonly />
-                            </label>
+
+                        <!-- Preço -->
+                        <div class="price-area">
+                            <div id="descPrecoWrapper" class="desc-preco-wrapper">
+                                <!-- preenchido pelo JS -->
+                            </div>
                         </div>
 
+                        <!-- Botão consultar -->
                         <div class="action-bar">
                             <button type="button" class="btn-consult" id="btnConsult">
                                 Consulte-nos
-                            </button>
-                            <button type="button" class="btn-cancel" onclick="fecharModalConsulta()">
-                                Fechar
                             </button>
                         </div>
 

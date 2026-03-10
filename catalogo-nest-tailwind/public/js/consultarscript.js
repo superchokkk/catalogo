@@ -1,15 +1,52 @@
-let consultaImages = [];
+/* ─────────────────────────────────────────
+   Estado
+───────────────────────────────────────── */
+let consultaImages   = [];
 let consultaActiveIdx = 0;
 
+const formatarMoeda = (valor) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
+
+/* ─────────────────────────────────────────
+   Renderiza bloco de preço no modal
+───────────────────────────────────────── */
+function renderizarPreco(produto) {
+    const wrapper = document.getElementById('descPrecoWrapper');
+    wrapper.innerHTML = '';
+
+    if (produto.oldprice != null) {
+        const topRow = document.createElement('div');
+        topRow.className = 'desc-preco-top-row';
+
+        const antigo = document.createElement('span');
+        antigo.className = 'desc-preco-antigo';
+        antigo.textContent = formatarMoeda(produto.oldprice);
+
+        const desconto = Math.round((1 - produto.preco / produto.oldprice) * 100);
+        const badge = document.createElement('span');
+        badge.className = 'desc-preco-badge';
+        badge.textContent = `-${desconto}%`;
+
+        topRow.appendChild(antigo);
+        topRow.appendChild(badge);
+        wrapper.appendChild(topRow);
+    }
+
+    const atual = document.createElement('p');
+    atual.className = 'desc-preco-atual';
+    atual.textContent = formatarMoeda(produto.preco);
+    wrapper.appendChild(atual);
+}
+
+/* ─────────────────────────────────────────
+   Abrir — preenche com dados do produto
+───────────────────────────────────────── */
 export function abrirModalConsulta(produto) {
     document.getElementById('descNome').value      = produto.nome      || '';
     document.getElementById('descDescricao').value = produto.descricao || '';
-    document.getElementById('descPreco').value     =
-        produto.preco != null
-            ? String(produto.preco).replace('.', ',')
-            : '';
 
-    // Carrega imagens: array produto.imagens ou string produto.imagem
+    renderizarPreco(produto);
+
     const urls = Array.isArray(produto.imagens)
         ? produto.imagens
         : produto.imagem ? [produto.imagem] : [];
@@ -21,7 +58,6 @@ export function abrirModalConsulta(produto) {
 
     document.getElementById('descModal').classList.add('open');
 }
-window.abrirModalConsulta = abrirModalConsulta;
 
 /* ─────────────────────────────────────────
    Fechar e limpar
@@ -30,7 +66,7 @@ export function fecharModalConsulta() {
     document.getElementById('descModal').classList.remove('open');
     document.getElementById('descNome').value      = '';
     document.getElementById('descDescricao').value = '';
-    document.getElementById('descPreco').value     = '';
+    document.getElementById('descPrecoWrapper').innerHTML = '';
     consultaImages    = [];
     consultaActiveIdx = 0;
     consultaRenderThumbs();

@@ -9,6 +9,7 @@ export class AppService {
         nome: 'Tênis Urban Pro',
         descricao: 'Tênis casual com acabamento premium para uso diário.',
         preco: 299.9,
+        oldPrice: 399.9,
         imagem:
           'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=600&q=80',
       },
