@@ -3,7 +3,7 @@ import { abrirModalConsulta } from './consultarscript.js';
 
 let currentUserRole = null;
 
-const statusEl   = document.getElementById('status');
+const statusEl = document.getElementById('mensagemStatus') || document.createElement('div');
 const catalogoEl = document.getElementById('catalogo');
 
 const formatarMoeda = (valor) =>
@@ -94,7 +94,7 @@ export async function carregarCatalogo() {
         produtos.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
         statusEl.textContent = 'Produtos carregados.';
 
-        if (currentUserRole) updateUI(currentUserRole);
+        if (currentUserRole) updateUI();
     } catch (erro) {
         statusEl.textContent = 'Não foi possível carregar o catálogo agora.';
     }
@@ -102,16 +102,41 @@ export async function carregarCatalogo() {
 
 carregarCatalogo();
 
-const updateUI = (role) => {
+const updateUI = () => {
+    const token = localStorage.getItem('token_supabase');
+    console.log("2. Token existe no localStorage?", !!token);
     const botaoC = document.getElementById('addButton');
-    if (role == 1) {
+    const paineisU = document.querySelectorAll('.painelU');
+    const paineisD = document.querySelectorAll('.painelD');
+
+    let nivelUsuario = null;
+
+
+    // Se o token existe, abrir e verificar se é válido
+    if (token) {
+        const payload = parseJwt(token);
+
+        console.log("2. Token existe no localStorage?", payload);
+        const tempoAtual = Math.floor(Date.now() / 1000);
+        if (payload && payload.exp && payload.exp > tempoAtual) {
+            nivelUsuario = payload.user_data?.nivel;
+            const nome = payload.user_data?.nome || 'Usuário';
+            console.log(`4. Usuário logado: ${nome}, Nível: ${nivelUsuario}`);
+        } else {
+            console.warn("Token expirado ou inválido. Limpando...");
+            localStorage.removeItem('token_supabase');
+        }
+    }
+    const nivelNum = nivelUsuario !== null && nivelUsuario !== undefined ? Number(nivelUsuario) : null;
+
+    if (nivelNum === 0 || nivelNum === 1) {
         if (botaoC) botaoC.style.display = 'inline-block';
-        document.querySelectorAll('.painelU').forEach(b => b.style.display = 'inline-block');
-        document.querySelectorAll('.painelD').forEach(b => b.style.display = 'inline-block');
+        paineisU.forEach(b => b.style.display = 'inline-block');
+        paineisD.forEach(b => b.style.display = 'inline-block');
     } else {
         if (botaoC) botaoC.style.display = 'none';
-        document.querySelectorAll('.painelU').forEach(b => b.style.display = 'none');
-        document.querySelectorAll('.painelD').forEach(b => b.style.display = 'none');
+        paineisU.forEach(b => b.style.display = 'none');
+        paineisD.forEach(b => b.style.display = 'none');
     }
 };
 
@@ -120,7 +145,6 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
     const loginButton = document.getElementById('loginButton');
     const formData = new FormData(e.target);
     const data = {
-        nome: formData.get('nome'),
         email: formData.get('email'),
         senha: formData.get('senha'),
     };
@@ -138,10 +162,11 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             return;
         }
 
-        currentUserRole = result.user.role;
+        localStorage.setItem('token_supabase', result.accessToken);
         loginButton.textContent = `Olá, ${result.user.nome}`;
         fecharELimparForm('loginModal', 'loginForm');
-        updateUI(result.user.role);
+        statusEl.textContent = `Login bem-sucedido! ${result.nivel}`;
+        updateUI();
         e.target.reset();
     } catch (error) {
         statusEl.textContent = 'Falha de conexão ao tentar login.';
@@ -192,10 +217,27 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
 
 function fecharELimparFormFotos(modalId, formId) {
     const modal = document.getElementById(modalId);
-    const form  = document.getElementById(formId);
+    const form = document.getElementById(formId);
     modal.classList.add('hidden');
     form.reset();
     const previewContainer = document.getElementById('previewContainer');
     if (previewContainer) previewContainer.innerHTML = '';
 }
 window.fecharELimparFormFotos = fecharELimparFormFotos;
+
+function parseJwt(token) {
+    try {
+        const base64Url = token.split('.')[1];
+        // Ajusta os caracteres do Base64Url para Base64 padrão
+        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+        // Decodifica lidando com caracteres especiais (UTF-8)
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(jsonPayload);
+    } catch (error) {
+        console.error("Erro ao ler o token:", error);
+        return null;
+    }
+}

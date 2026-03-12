@@ -1,12 +1,17 @@
 import { Module } from '@nestjs/common';
+import { JwtStrategy } from './auth/jwt.strategy';
 import { AppController } from './app.controller';
+import { AuthController } from './auth/auth.controller';
 import { AppService } from './app.service';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
+import { AuthService } from './auth/auth.service';
+import { SupabaseService } from './supabase/supabase.service';
+import { ConfigModule } from '@nestjs/config';
 
 @Module({
-  imports: [],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true })
+  ],
   controllers: [AppController, AuthController],
-  providers: [AppService, AuthService],
+  providers: [AppService, AuthService, SupabaseService, JwtStrategy],
 })
 export class AppModule {}
