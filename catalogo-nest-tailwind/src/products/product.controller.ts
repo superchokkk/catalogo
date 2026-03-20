@@ -1,5 +1,5 @@
 // controllers/productController.js
-import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
@@ -11,7 +11,11 @@ export class ProductController {
     @Get('listagem')
     async listProducts() {
         try {
-            return await this.productService.getProductsWithImages();
+            const produtos = await this.productService.getProductsWithImages();
+            return {
+                produtos,
+                podeAtualizarUI: true, // or derive this from business logic
+            };
         } catch (error) {
             console.error('Erro no Controller:', error.message);
             throw new InternalServerErrorException('Erro interno ao buscar catálogo.');
@@ -27,12 +31,13 @@ export class ProductController {
     }))
     async createProduct(
         @Body() productData: any,
-        @UploadedFiles() files: Array<Express.Multer.File> // Captura os binários das fotos
+        @UploadedFiles() files: Array<Express.Multer.File>, // Captura os binários das fotos
+        @Req() req: any
     ) {
         try {
-            console.log("Dados recebidos para criação de produto:", productData);
+            const userId = req.user.id;
             // Passamos os dados E os arquivos para o Service
-            return await this.productService.createProductWithImages(productData, files);
+            return await this.productService.createProductWithImages(productData, files, userId);
         } catch (error) {
             console.error('Erro no Controller:', error.message);
             throw new InternalServerErrorException('Erro interno ao criar produto.');

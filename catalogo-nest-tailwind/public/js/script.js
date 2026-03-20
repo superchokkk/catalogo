@@ -17,11 +17,11 @@ const criarCard = (produto) => {
     const imgWrapper = document.createElement('div');
     imgWrapper.style.cssText = 'height: 224px; overflow: hidden; flex-shrink: 0;';
 
-    const img = document.createElement('img');
-    img.setAttribute('src', produto.imagem);
-    img.setAttribute('alt', produto.nome);
-    img.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
-    imgWrapper.appendChild(img);
+    const imgEl = document.createElement('img');
+    imgEl.src = produto.produto_imagens?.[0]?.url_publica ?? '/placeholder.png';
+    imgEl.alt = produto.nome;
+    imgEl.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
+    imgWrapper.appendChild(imgEl);
 
     const body = document.createElement('div');
     body.className = 'p-4';
@@ -86,19 +86,29 @@ const criarCard = (produto) => {
 
 export async function carregarCatalogo() {
     try {
-        const resposta = await fetch('/api/products');
-        if (!resposta.ok) throw new Error('Falha ao carregar produtos.');
+        const token = localStorage.getItem('token');
 
-        const produtos = await resposta.json();
+        const resposta = await fetch('/api/produtos/listagem', {
+            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+        });
+
+        if (!resposta.ok) throw new Error(`Falha ao carregar produtos. Status: ${resposta.status}`);
+
+        const { produtos, podeAtualizarUI } = await resposta.json();
+        if (!Array.isArray(produtos) || produtos.length === 0) {
+            statusEl.textContent = 'Nenhum produto encontrado.';
+            return;
+        }
         catalogoEl.innerHTML = '';
         produtos.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
-        produtos.forEach((produto) => {
-            catalogoEl.appendChild(criarCard(produto));
-        });
         statusEl.textContent = 'Produtos carregados.';
 
-        if (currentUserRole) updateUI();
+        if (token) {
+            updateUI();
+        }
+
     } catch (erro) {
+        console.error('ERRO GRAVE no carregarCatalogo:', erro);
         statusEl.textContent = 'Não foi possível carregar o catálogo agora.';
     }
 }
@@ -107,39 +117,30 @@ carregarCatalogo();
 
 const updateUI = () => {
     const token = localStorage.getItem('token_supabase');
-    console.log("2. Token existe no localStorage?", !!token);
     const botaoC = document.getElementById('addButton');
     const paineisU = document.querySelectorAll('.painelU');
     const paineisD = document.querySelectorAll('.painelD');
 
-    let nivelUsuario = null;
+    if (botaoC) botaoC.style.display = 'none';
+    paineisU.forEach(b => b.style.display = 'none');
+    paineisD.forEach(b => b.style.display = 'none');
 
+    if (!token) return; // sem token, para aqui
 
-    // Se o token existe, abrir e verificar se é válido
-    if (token) {
-        const payload = parseJwt(token);
+    const payload = parseJwt(token);
+    const tempoAtual = Math.floor(Date.now() / 1000);
 
-        console.log("2. Token existe no localStorage?", payload);
-        const tempoAtual = Math.floor(Date.now() / 1000);
-        if (payload && payload.exp && payload.exp > tempoAtual) {
-            nivelUsuario = payload.user_data?.nivel;
-            const nome = payload.user_data?.nome || 'Usuário';
-            console.log(`4. Usuário logado: ${nome}, Nível: ${nivelUsuario}`);
-        } else {
-            console.warn("Token expirado ou inválido. Limpando...");
-            localStorage.removeItem('token_supabase');
-        }
+    if (!payload || !payload.exp || payload.exp <= tempoAtual) {
+        localStorage.removeItem('token_supabase');
+        return; // token inválido ou expirado, para aqui
     }
-    const nivelNum = nivelUsuario !== null && nivelUsuario !== undefined ? Number(nivelUsuario) : null;
+
+    const nivelNum = Number(payload.user_data?.nivel ?? null);
 
     if (nivelNum === 0 || nivelNum === 1) {
         if (botaoC) botaoC.style.display = 'inline-block';
         paineisU.forEach(b => b.style.display = 'inline-block');
         paineisD.forEach(b => b.style.display = 'inline-block');
-    } else {
-        if (botaoC) botaoC.style.display = 'none';
-        paineisU.forEach(b => b.style.display = 'none');
-        paineisD.forEach(b => b.style.display = 'none');
     }
 };
 
@@ -164,7 +165,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
             statusEl.textContent = `Erro no login: ${result.message}`;
             return;
         }
-
+        //avisar login invalido
         localStorage.setItem('token_supabase', result.accessToken);
         loginButton.textContent = `Olá, ${result.user.nome}`;
         fecharELimparForm('loginModal', 'loginForm');
@@ -202,8 +203,6 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
         const token = localStorage.getItem('token_supabase');
-
-        console.log("2. Token existe no localStorage?", payload);
         const response = await fetch('/api/produtos/criar', {
             method: 'POST',
             headers: {
@@ -216,7 +215,8 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
             document.getElementById('addModal').classList.add('hidden');
             e.target.reset();
             document.getElementById('previewContainer').innerHTML = '';
-            carregarCatalogo();
+            await carregarCatalogo();
+            updateUI();
         } else {
             alert('Erro ao salvar produto.');
         }
