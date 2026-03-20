@@ -1,8 +1,8 @@
 // controllers/productController.js
 import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
+import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
 @Controller('produtos')
 export class ProductController {
@@ -19,7 +19,7 @@ export class ProductController {
     }
 
     @Post('criar')
-    @UseGuards(AuthGuard('jwt'))
+    @UseGuards(SupabaseAuthGuard)
     @UseInterceptors(FilesInterceptor('imagens', 10, { 
         limits: {
             fileSize: 5 * 1024 * 1024
@@ -30,6 +30,7 @@ export class ProductController {
         @UploadedFiles() files: Array<Express.Multer.File> // Captura os binários das fotos
     ) {
         try {
+            console.log("Dados recebidos para criação de produto:", productData);
             // Passamos os dados E os arquivos para o Service
             return await this.productService.createProductWithImages(productData, files);
         } catch (error) {

@@ -32,10 +32,11 @@ export class ProductService {
         }])
         .select()
         .single();
+        console.log("Produto criado:", product);
 
         if (pError) {
-        console.error('Erro ao criar produto:', pError.message);
-        throw new InternalServerErrorException('Erro ao criar produto no banco.');
+          console.error('Erro ao criar produto:', pError.message);
+          throw new InternalServerErrorException('Erro ao criar produto no banco.');
         }
 
         // 2. Upload das Imagens
@@ -43,6 +44,7 @@ export class ProductService {
         const imageUrls: { produto_id: string; url_path: string }[] = [];
 
         if (files && files.length > 0) {
+          console.log(`Iniciando upload de ${files.length} arquivos para o produto ID ${product.id}`);
         for (const file of files) {
             const fileExt = file.originalname.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
@@ -65,6 +67,7 @@ export class ProductService {
             produto_id: product.id, // Agora o TS reconhece o 'product' aqui
             url_path: publicUrl
             });
+            console.log(`Arquivo ${file.originalname} enviado com sucesso. URL pública: ${publicUrl}`);
         }
 
         // 3. Salvar referências das imagens
@@ -74,6 +77,7 @@ export class ProductService {
 
         if (iError) throw iError;
         }
+        console.log("Produto criado com sucesso e imagens associadas:", product);
 
         return product;
   }

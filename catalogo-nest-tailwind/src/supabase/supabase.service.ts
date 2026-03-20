@@ -11,7 +11,7 @@ export class SupabaseService {
 
   constructor(private configService: ConfigService) {
     const supabaseUrl = this.configService.get<string>('SUPABASE_URL') || '';
-    const supabaseKey = this.configService.get<string>('SUPABASE_KEY') || '';
+    const supabaseKey = this.configService.get<string>('SUPABASE_PRIVATE_KEY') || '';
 
     // Inicializa o cliente do Supabase
     this.client = createClient(supabaseUrl, supabaseKey);

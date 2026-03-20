@@ -201,7 +201,9 @@ document.getElementById('imageInput').addEventListener('change', function(e) {
 document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-        
+        const token = localStorage.getItem('token_supabase');
+
+        console.log("2. Token existe no localStorage?", payload);
         const response = await fetch('/api/produtos/criar', {
             method: 'POST',
             headers: {
