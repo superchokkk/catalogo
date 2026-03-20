@@ -180,40 +180,27 @@
                     <input type="file" id="descImageInput" accept="image/*" multiple style="display:none;" />
                 </div>
 
-                <!-- DIREITO: informações -->
                 <div class="panel-info">
-
-                    <!-- Botão fechar no canto superior direito -->
                     <button class="modal-close-btn" onclick="fecharModalConsulta()" title="Fechar">✕</button>
-
                     <form id="descPainel" style="display:contents;">
-
-                        <!-- Nome -->
                         <div class="name-bar">
                             <input type="text" name="nome" id="descNome" placeholder="produto.nome"
                                 aria-label="Nome do produto" readonly />
                         </div>
-
-                        <!-- Descrição -->
                         <div class="desc-area">
                             <textarea name="descricao" id="descDescricao" placeholder="produto.descricao"
                                 aria-label="Descrição do produto" readonly></textarea>
                         </div>
-
-                        <!-- Preço -->
                         <div class="price-area">
                             <div id="descPrecoWrapper" class="desc-preco-wrapper">
                                 <!-- preenchido pelo JS -->
                             </div>
                         </div>
-
-                        <!-- Botão consultar -->
                         <div class="action-bar">
                             <button type="button" class="btn-consult" id="btnConsult">
                                 Consulte-nos
                             </button>
                         </div>
-
                     </form>
                 </div>
 

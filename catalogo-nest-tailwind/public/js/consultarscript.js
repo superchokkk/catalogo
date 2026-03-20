@@ -46,12 +46,11 @@ export function abrirModalConsulta(produto) {
     document.getElementById('descDescricao').value = produto.descricao || '';
 
     renderizarPreco(produto);
+    const imagens = Array.isArray(produto.produto_imagens)
+        ? produto.produto_imagens
+        : [];
 
-    const urls = Array.isArray(produto.imagens)
-        ? produto.imagens
-        : produto.imagem ? [produto.imagem] : [];
-
-    consultaImages    = urls.map(url => ({ url }));
+    consultaImages    = imagens.map(img => ({ url: img.url_publica }));
     consultaActiveIdx = 0;
     consultaRenderThumbs();
     consultaUpdateMainImage();
@@ -125,9 +124,16 @@ function consultaRenderThumbs() {
    Scroll do carrossel
 ───────────────────────────────────────── */
 document.getElementById('descScrollRight').addEventListener('click', () => {
-    document.getElementById('descThumbsContainer').scrollBy({ left: 100, behavior: 'smooth' });
-});
+    consultaActiveIdx = (consultaActiveIdx + 1) % consultaImages.length;
 
+    consultaUpdateMainImage();
+    consultaRenderThumbs();
+    const container = document.getElementById('descThumbsContainer');
+    const thumbAtiva = container.children[consultaActiveIdx];
+    if (thumbAtiva) {
+        thumbAtiva.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+});
 /* ─────────────────────────────────────────
    Botão Consulte-nos
 ───────────────────────────────────────── */
