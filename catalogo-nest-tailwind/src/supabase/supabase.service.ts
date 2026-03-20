@@ -4,6 +4,9 @@ import { createClient, SupabaseClient } from '@supabase/supabase-js';
 
 @Injectable()
 export class SupabaseService {
+  static from(arg0: string) {
+      throw new Error('Method not implemented.');
+  }
   public client: SupabaseClient;
 
   constructor(private configService: ConfigService) {

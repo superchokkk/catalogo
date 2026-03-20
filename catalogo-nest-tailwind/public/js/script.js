@@ -92,6 +92,9 @@ export async function carregarCatalogo() {
         const produtos = await resposta.json();
         catalogoEl.innerHTML = '';
         produtos.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
+        produtos.forEach((produto) => {
+            catalogoEl.appendChild(criarCard(produto));
+        });
         statusEl.textContent = 'Produtos carregados.';
 
         if (currentUserRole) updateUI();
@@ -179,15 +182,16 @@ function fecharELimparForm(modalId, formId) {
 }
 window.fecharELimparForm = fecharELimparForm;
 
-document.getElementById('imageInput').addEventListener('change', function (e) {
+document.getElementById('imageInput').addEventListener('change', function(e) {
     const container = document.getElementById('previewContainer');
     container.innerHTML = '';
+
     Array.from(e.target.files).forEach(file => {
         const reader = new FileReader();
         reader.onload = (event) => {
             const img = document.createElement('img');
-            img.setAttribute('src', event.target.result);
-            img.className = 'h-24 w-full object-cover rounded-md border border-slate-200';
+            img.src = event.target.result;
+            img.className = "w-full h-24 object-cover rounded-md border border-slate-200";
             container.appendChild(img);
         };
         reader.readAsDataURL(file);
@@ -197,8 +201,12 @@ document.getElementById('imageInput').addEventListener('change', function (e) {
 document.getElementById('addForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-        const response = await fetch('/api/products', {
+        
+        const response = await fetch('/api/produtos/criar', {
             method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}` 
+            },
             body: new FormData(e.target),
         });
         if (response.ok) {
