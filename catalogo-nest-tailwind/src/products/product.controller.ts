@@ -1,5 +1,5 @@
 // controllers/productController.js
-import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
@@ -24,7 +24,7 @@ export class ProductController {
 
     @Post('criar')
     @UseGuards(SupabaseAuthGuard)
-    @UseInterceptors(FilesInterceptor('imagens', 10, { 
+    @UseInterceptors(FilesInterceptor('imagens', 10, {
         limits: {
             fileSize: 5 * 1024 * 1024
         }
@@ -41,6 +41,35 @@ export class ProductController {
         } catch (error) {
             console.error('Erro no Controller:', error.message);
             throw new InternalServerErrorException('Erro interno ao criar produto.');
+        }
+    }
+
+    @Put(':id')
+    @UseGuards(SupabaseAuthGuard)
+    @UseInterceptors(FilesInterceptor('imagens', 10))
+    async updateProduct(
+        @Param('id') id: string,
+        @Body() productData: any,
+        @UploadedFiles() files: Array<Express.Multer.File>,
+        @Req() req: any
+    ) {
+        try {
+            const userId = req.user.id;
+            // Parse das imagens que devem ser mantidas (enviadas como string JSON pelo frontend)
+            const imagensExistentes = productData.imagensExistentes
+                ? JSON.parse(productData.imagensExistentes)
+                : [];
+
+            return await this.productService.updateProductWithImages(
+                id,
+                productData,
+                files,
+                imagensExistentes,
+                userId
+            );
+        } catch (error) {
+            console.error('Erro no Update Controller:', error.message);
+            throw new InternalServerErrorException('Erro ao atualizar produto.');
         }
     }
 }

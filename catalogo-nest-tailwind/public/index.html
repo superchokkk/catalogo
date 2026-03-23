@@ -110,62 +110,83 @@
         </div>
 
         <div id="upModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div class="bg-white rounded-lg shadow-lg w-96 max-w-md modal-container">
-                <div class="p-6 pb-4 border-b">
-                    <h2 class="text-xl font-bold text-slate-800">Modificar produto</h2>
-                </div>
-                <div class="form-scrollable custom-scrollbar p-6">
-                    <form id="upForm" class="space-y-4">
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Nome</label>
-                            <input type="text" name="nome" id="upNome"
-                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                                placeholder="Nome do produto" />
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Descrição</label>
-                            <textarea name="descricao" id="upDescricao" rows="3"
-                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                                placeholder="Descrição detalhada do produto"></textarea>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Preço</label>
-                            <input type="text" name="preco" inputmode="decimal" pattern="[0-9]+([,\.][0-9]{1,2})?"
-                                class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none"
-                                placeholder="0,00" />
-                        </div>
-                        <div class="container">
-                            <label class="label">Promocional</label>
-                            <input type="checkbox" id="checkPromocional" />
-                            <div id="promocionalField" class="hidden">
-                                <input type="text" name="promocional" id="upPromocional" inputmode="decimal"
-                                    pattern="[0-9]+([,\.][0-9]{1,2})?" placeholder="0,00" />
-                            </div>
-                        </div>
+            <div class="bg-white rounded-lg shadow-lg w-full max-w-5xl modal-container overflow-hidden">
 
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700">Imagens do Produto</label>
-                            <input type="file" id="upImageInput" accept="image/*" multiple
-                                class="mt-1 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer">
+                <div class="panel-images bg-slate-100 p-6 flex flex-col gap-4">
+                    <div class="main-image-wrap bg-slate-200 border-2 border-dashed border-slate-300 rounded-xl overflow-hidden flex items-center justify-center relative group"
+                        style="height: 350px;">
+                        <div id="upMainPlaceholder" class="text-slate-400 text-sm">Sem imagem selecionada</div>
+                        <img id="upMainImg" src="" class="hidden w-full h-full object-cover">
+                    </div>
 
-                            <div id="upPreviewContainer" class="mt-4 flex flex-col gap-3">
-                                <div
-                                    class="h-20 bg-slate-100 rounded border-dashed border-2 border-slate-300 flex items-center justify-center text-xs text-slate-400">
-                                    Preview</div>
-                            </div>
+                    <div class="carousel-row">
+                        <div id="upPreviewContainer"
+                            class="carousel-thumbs flex gap-2 overflow-x-auto py-2 custom-scrollbar">
                         </div>
-                    </form>
+                    </div>
+
+                    <button type="button" onclick="document.getElementById('upImageInput').click()"
+                        class="painelC w-full flex items-center justify-center gap-2">
+                        <span>➕ Adicionar Novas Fotos</span>
+                    </button>
+                    <input type="file" id="upImageInput" accept="image/*" multiple class="hidden">
                 </div>
-                <div class="flex justify-end space-x-2 p-6 border-t bg-slate-50 rounded-b-lg">
-                    <button type="button"
-                        class="px-4 py-2 rounded-md bg-gray-200 text-slate-700 font-medium hover:bg-gray-300 transition-colors"
-                        onclick="fecharELimparEdicao()">
-                        Cancelar
-                    </button>
-                    <button type="submit" form="upForm"
-                        class="px-4 py-2 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-colors shadow-sm">
-                        Salvar Alterações
-                    </button>
+
+                <div class="panel-info flex flex-col h-full bg-white relative">
+                    <button type="button" class="modal-close-btn" onclick="fecharELimparEdicao()">✕</button>
+
+                    <div class="p-6 border-b">
+                        <h2 class="text-xl font-bold text-slate-800">Modificar Produto</h2>
+                    </div>
+
+                    <div class="form-scrollable custom-scrollbar p-6 flex-grow">
+                        <form id="upForm" class="space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Nome</label>
+                                <input type="text" name="nome" id="upNome"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none" />
+                            </div>
+
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Descrição</label>
+                                <textarea name="descricao" id="upDescricao" rows="4"
+                                    class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none resize-none"></textarea>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700">Preço</label>
+                                    <input type="text" name="preco" inputmode="decimal"
+                                        pattern="[0-9]+([,\.][0-9]{1,2})?"
+                                        class="mt-1 block w-full rounded-md border border-slate-300 px-3 py-2 focus:ring-2 focus:ring-blue-600 focus:outline-none" />
+                                </div>
+                                <div class="flex flex-col justify-end">
+                                    <label
+                                        class="flex items-center gap-2 cursor-pointer text-sm font-medium text-slate-700 mb-2">
+                                        <input type="checkbox" id="checkPromocional" class="rounded border-slate-300" />
+                                        Promocional
+                                    </label>
+                                    <div id="promocionalField" class="hidden">
+                                        <input type="text" name="promocional" id="upPromocional"
+                                            class="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+                                            placeholder="Valor Promo" />
+                                    </div>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="p-6 border-t bg-slate-50 flex justify-end gap-3">
+                        <button type="button"
+                            class="px-5 py-2 rounded-md bg-gray-200 text-slate-700 font-medium hover:bg-gray-300 transition-all"
+                            onclick="fecharELimparEdicao()">
+                            Cancelar
+                        </button>
+                        <button type="submit" form="upForm"
+                            class="px-5 py-2 rounded-md bg-blue-600 text-white font-medium hover:bg-blue-700 transition-all shadow-md active:scale-95">
+                            Salvar Alterações
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>

@@ -31,7 +31,7 @@ export class ProductService {
   }
 
   async createProductWithImages(productData: any, files: Array<Express.Multer.File>, userId: string) {
-    // 1. Criar o Produto
+
     const { data: product, error: pError } = await this.supabaseService.client
       .from('produtos')
       .insert([{
@@ -50,7 +50,7 @@ export class ProductService {
       throw new InternalServerErrorException('Erro ao criar produto no banco.');
     }
 
-    // 2. Upload das Imagens
+    //imagens
     const imageUrls: { produto_id: string; url_path: string }[] = [];
 
     if (files && files.length > 0) {
@@ -78,7 +78,7 @@ export class ProductService {
         });
       }
 
-      // 3. Salvar referências das imagens
+      //salvando ref. foto
       const { error: iError } = await this.supabaseService.client
         .from('produto_imagens')
         .insert(imageUrls);
@@ -87,5 +87,38 @@ export class ProductService {
     }
 
     return product;
+  }
+
+  // src/products/product.service.ts
+
+  async updateProductWithImages(id: string, productData: any, files: Array<Express.Multer.File>, imagensManter: string[], userId: string) {
+    // 1. Atualiza dados básicos
+    await this.supabaseService.client.from('produtos').update({
+      nome: productData.nome,
+      descricao: productData.descricao,
+      preco: parseFloat(productData.preco.toString().replace(',', '.')),
+      updated_by: userId
+    }).eq('id', id);
+
+    // 2. Remove do banco as imagens que NÃO estão na lista de 'manter'
+    // Se a lista estiver vazia, remove todas as referências antigas para esse produto
+    const query = this.supabaseService.client.from('produto_imagens').delete().eq('produto_id', id);
+    if (imagensManter.length > 0) {
+      query.not('url_path', 'in', `(${imagensManter.join(',')})`);
+    }
+    await query;
+
+    // 3. Upload de novas fotos (se houver)
+    if (files && files.length > 0) {
+      for (const file of files) {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+        const filePath = `produtos/${id}/${fileName}`;
+
+        await this.supabaseService.client.storage.from('produtos-fotos').upload(filePath, file.buffer, { contentType: file.mimetype });
+        const { data: { publicUrl } } = this.supabaseService.client.storage.from('produtos-fotos').getPublicUrl(filePath);
+
+        await this.supabaseService.client.from('produto_imagens').insert([{ produto_id: id, url_path: publicUrl }]);
+      }
+    }
   }
 }
