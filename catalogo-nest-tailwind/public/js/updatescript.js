@@ -11,7 +11,21 @@ export function abrirModalEdicao(produto) {
     produtoAtualId = produto.id;
     form.nome.value = produto.nome;
     form.descricao.value = produto.descricao;
-    form.preco.value = produto.preco;
+    const checkPromocional = document.getElementById('checkPromocional');
+    const promocionalField = document.getElementById('promocionalField');
+    const upPromocional = document.getElementById('upPromocional');
+
+    if (produto.preco_antigo) {
+        form.preco.value = produto.preco_antigo;
+        upPromocional.value = produto.preco; 
+        checkPromocional.checked = true;
+        promocionalField.classList.remove('hidden');
+    } else {
+        form.preco.value = produto.preco;
+        upPromocional.value = '';
+        checkPromocional.checked = false;
+        promocionalField.classList.add('hidden');
+    }
 
     // Inicializa os estados do carrossel
     imagensParaUpload = [];
@@ -27,7 +41,7 @@ function renderizarPreviews() {
     const container = document.getElementById('upPreviewContainer');
     const mainImg = document.getElementById('upMainImg');
     const placeholder = document.getElementById('upMainPlaceholder');
-    
+
     container.innerHTML = '';
 
     // Combina imagens existentes e novas para o carrossel
@@ -65,11 +79,11 @@ function renderizarPreviews() {
         const btnDelete = document.createElement('button');
         btnDelete.innerHTML = '×';
         btnDelete.type = 'button';
-        btnDelete.style.cssText = 'position: absolute; top: -5px; right: -5px; background: #dc2626; color: white; border-radius: 50%; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; border: none; cursor: pointer; z-index: 10;';
-        
+        btnDelete.style.cssText = 'position: absolute; top: -10px; right: -10px; background: #dc2626; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; border: none; cursor: pointer; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3);';
+
         btnDelete.onclick = (e) => {
             e.stopPropagation(); // Impede que o clique selecione a imagem antes de deletar
-            
+
             if (img.type === 'existente') {
                 imagensExistentes.splice(index, 1);
             } else {
@@ -82,7 +96,7 @@ function renderizarPreviews() {
             if (activeIdx >= todasImagens.length - 1) {
                 activeIdx = Math.max(0, todasImagens.length - 2);
             }
-            
+
             renderizarPreviews();
         };
 
@@ -106,11 +120,21 @@ document.getElementById('upForm').addEventListener('submit', async function (e) 
     const formData = new FormData();
     formData.append('nome', this.nome.value);
     formData.append('descricao', this.descricao.value);
-    formData.append('preco', this.preco.value);
-    
+    const isPromocional = document.getElementById('checkPromocional').checked;
+    const valorBase = this.preco.value;
+    const valorPromo = document.getElementById('upPromocional').value;
+
+    if (isPromocional && valorPromo) {
+        formData.append('preco', valorPromo);       // O novo preço promocional vira o principal
+        formData.append('preco_antigo', valorBase); // Guarda o original para cálculo
+    } else {
+        formData.append('preco', valorBase);
+        formData.append('preco_antigo', '');        // Envia vazio para remover a promoção no banco
+    }
+
     // Envia a lista de URLs que restaram (as que não foram deletadas)
     formData.append('imagensExistentes', JSON.stringify(imagensExistentes));
-    
+
     // Adiciona os novos arquivos binários
     imagensParaUpload.forEach(file => formData.append('imagens', file));
 

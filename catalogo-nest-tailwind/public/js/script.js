@@ -36,9 +36,39 @@ const criarCard = (produto) => {
     descricao.style.flex = '1';
     descricao.textContent = produto.descricao;
 
-    const preco = document.createElement('p');
-    preco.className = 'mt-4 text-xl font-bold text-slate-900';
-    preco.textContent = formatarMoeda(produto.preco);
+    // --- LÓGICA DE PREÇO (NORMAL OU PROMOCIONAL) ---
+    const priceArea = document.createElement('div');
+    priceArea.className = 'mt-4 flex items-center gap-2 flex-wrap';
+
+    if (produto.preco_antigo) {
+        // Preço Novo (em vermelho)
+        const precoAtual = document.createElement('p');
+        precoAtual.className = 'text-xl font-bold text-red-600';
+        precoAtual.textContent = formatarMoeda(produto.preco);
+
+        // Badge de Desconto
+        const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
+        const badge = document.createElement('span');
+        badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
+        badge.textContent = `-${desconto}%`;
+
+        // Preço Antigo (riscado)
+        const precoAntigoEl = document.createElement('span');
+        precoAntigoEl.className = 'text-sm line-through text-slate-400';
+        precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
+
+        priceArea.appendChild(precoAtual);
+        priceArea.appendChild(badge);
+        priceArea.appendChild(precoAntigoEl);
+    } else {
+        // Preço Normal
+        const precoAtual = document.createElement('p');
+        precoAtual.className = 'text-xl font-bold text-slate-900';
+        precoAtual.textContent = formatarMoeda(produto.preco);
+        
+        priceArea.appendChild(precoAtual);
+    }
+    // --- FIM DA LÓGICA DE PREÇO ---
 
     const btnArea = document.createElement('div');
     btnArea.className = 'mt-4 flex gap-2';
@@ -75,7 +105,7 @@ const criarCard = (produto) => {
 
     body.appendChild(nome);
     body.appendChild(descricao);
-    body.appendChild(preco);
+    body.appendChild(priceArea); // Adiciona a área de preços
     body.appendChild(btnArea);
 
     card.appendChild(imgWrapper);
@@ -86,7 +116,7 @@ const criarCard = (produto) => {
 
 export async function carregarCatalogo() {
     try {
-        const token = localStorage.getItem('token');
+        const token = localStorage.getItem('token_supabase');
 
         const resposta = await fetch('/api/produtos/listagem', {
             headers: token ? { 'Authorization': `Bearer ${token}` } : {}
@@ -103,9 +133,7 @@ export async function carregarCatalogo() {
         produtos.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
         statusEl.textContent = 'Produtos carregados.';
 
-        if (token) {
-            updateUI();
-        }
+        updateUI();
 
     } catch (erro) {
         console.error('ERRO GRAVE no carregarCatalogo:', erro);

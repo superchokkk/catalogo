@@ -14,15 +14,16 @@ function renderizarPreco(produto) {
     const wrapper = document.getElementById('descPrecoWrapper');
     wrapper.innerHTML = '';
 
-    if (produto.oldprice != null) {
+    // Mudar de oldprice para preco_antigo
+    if (produto.preco_antigo != null) {
         const topRow = document.createElement('div');
         topRow.className = 'desc-preco-top-row';
 
         const antigo = document.createElement('span');
         antigo.className = 'desc-preco-antigo';
-        antigo.textContent = formatarMoeda(produto.oldprice);
+        antigo.textContent = formatarMoeda(produto.preco_antigo);
 
-        const desconto = Math.round((1 - produto.preco / produto.oldprice) * 100);
+        const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
         const badge = document.createElement('span');
         badge.className = 'desc-preco-badge';
         badge.textContent = `-${desconto}%`;
@@ -34,6 +35,8 @@ function renderizarPreco(produto) {
 
     const atual = document.createElement('p');
     atual.className = 'desc-preco-atual';
+    // Se for promo, pode querer adicionar uma class para deixar vermelho também aqui
+    if(produto.preco_antigo) atual.style.color = '#dc2626'; 
     atual.textContent = formatarMoeda(produto.preco);
     wrapper.appendChild(atual);
 }
