@@ -251,3 +251,16 @@ function parseJwt(token) {
         return null;
     }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const checkbox = document.getElementById("checkPromocional");
+  const field = document.getElementById("promocionalField");
+
+  checkbox.addEventListener("change", () => {
+    if (checkbox.checked) {
+      field.classList.remove("hidden");
+    } else {
+      field.classList.add("hidden");
+    }
+  });
+});
