@@ -15,11 +15,16 @@ export function abrirModalEdicao(produto) {
     const promocionalField = document.getElementById('promocionalField');
     const upPromocional = document.getElementById('upPromocional');
 
-    if (produto.preco_antigo) {
-        form.preco.value = produto.preco_antigo;
-        upPromocional.value = produto.preco; 
+    if (produto.promocao) {
         checkPromocional.checked = true;
         promocionalField.classList.remove('hidden');
+        if (produto.preco_antigo) {
+            form.preco.value = produto.preco_antigo;
+            upPromocional.value = produto.preco; 
+        } else {
+            form.preco.value = produto.preco;
+            upPromocional.value = '';
+        }
     } else {
         form.preco.value = produto.preco;
         upPromocional.value = '';
@@ -82,6 +87,7 @@ function renderizarPreviews() {
         btnDelete.style.cssText = 'position: absolute; top: -10px; right: -10px; background: #dc2626; color: white; border-radius: 50%; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; border: none; cursor: pointer; z-index: 10; box-shadow: 0 2px 4px rgba(0,0,0,0.3);';
 
         btnDelete.onclick = (e) => {
+            e.preventDefault();
             e.stopPropagation(); // Impede que o clique selecione a imagem antes de deletar
 
             if (img.type === 'existente') {
@@ -111,7 +117,7 @@ document.getElementById('upImageInput').addEventListener('change', function (e) 
     const novosArquivos = Array.from(e.target.files);
     imagensParaUpload = [...imagensParaUpload, ...novosArquivos];
     renderizarPreviews();
-    this.value = ''; // Limpa o input para permitir selecionar o mesmo arquivo novamente
+    //this.value = ''; // Limpa o input para permitir selecionar o mesmo arquivo novamente
 });
 
 document.getElementById('upForm').addEventListener('submit', async function (e) {

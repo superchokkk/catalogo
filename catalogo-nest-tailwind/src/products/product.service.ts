@@ -92,12 +92,14 @@ export class ProductService {
   async updateProductWithImages(id: string, productData: any, files: Array<Express.Multer.File>, imagensManter: string[], userId: string) {
     const precoAtual = parseFloat(productData.preco.toString().replace(',', '.'));
     const precoAntigo = productData.preco_antigo ? parseFloat(productData.preco_antigo.toString().replace(',', '.')) : null;
+    const isPromocao = productData.promocao === 'true';
 
     const { error: updateError } = await this.supabaseService.client.from('produtos').update({
       nome: productData.nome,
       descricao: productData.descricao,
       preco: precoAtual,
       preco_antigo: precoAntigo,
+      promocao: isPromocao,
       updated_by: userId
     }).eq('id', id);
 
@@ -123,7 +125,14 @@ export class ProductService {
 
     if (imagensParaDeletar && imagensParaDeletar.length > 0) {
       const idsParaDeletar = imagensParaDeletar.map(img => img.id);
-      console.log(`[Update Produto] Deletando as imagens antigas com IDs: ${idsParaDeletar.join(', ')}`);
+      for (const img of imagensParaDeletar) {
+        console.log(`[Update Produto] Imagem marcada para deleção: ID=${img.id}, URL=${img.url_path}`);
+      }
+
+      const pathsParaDeletar = imagensParaDeletar.map(img => {
+        const partes = img.url_path.split('/produtos-fotos/');
+        return partes.length > 1 ? partes[1] : null;
+      }).filter(p => p !== null);
 
       const { error: delError } = await this.supabaseService.client
         .from('produto_imagens')
@@ -134,36 +143,46 @@ export class ProductService {
         console.error('[Update Produto] Erro ao deletar imagens antigas:', delError.message);
         throw new InternalServerErrorException(`Erro ao remover imagens antigas: ${delError.message}`);
       }
-    }
 
-    // 3. Upload de novas fotos (se houver)
-    if (files && files.length > 0) {
-      console.log(`[Update Produto] Recebidas ${files.length} novas fotos para upload.`);
-
-      for (const file of files) {
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
-        const filePath = `produtos/${id}/${fileName}`;
-
-        const { error: uploadError } = await this.supabaseService.client.storage
+      if (pathsParaDeletar.length > 0) {
+        const { error: storageError } = await this.supabaseService.client.storage
           .from('produtos-fotos')
-          .upload(filePath, file.buffer, { contentType: file.mimetype });
+          .remove(pathsParaDeletar);
 
-        if (uploadError) {
-          console.error('[Update Produto] Erro no upload no Storage:', uploadError.message);
-          throw new InternalServerErrorException(`Erro no upload da foto: ${uploadError.message}`);
+        if (storageError) {
+          console.error('[Update Produto] Erro ao remover do Storage físico:', storageError.message);
         }
+      }
 
-        const { data: { publicUrl } } = this.supabaseService.client.storage
-          .from('produtos-fotos')
-          .getPublicUrl(filePath);
+      // 3. Upload de novas fotos (se houver)
+      if (files && files.length > 0) {
+        console.log(`[Update Produto] Recebidas ${files.length} novas fotos para upload.`);
 
-        const { error: insertError } = await this.supabaseService.client
-          .from('produto_imagens')
-          .insert([{ produto_id: id, url_path: publicUrl }]);
+        for (const file of files) {
+          const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 5)}`;
+          const filePath = `produtos/${id}/${fileName}`;
 
-        if (insertError) {
-          console.error('[Update Produto] Erro ao salvar URL no banco:', insertError.message);
-          throw new InternalServerErrorException(`Erro ao atrelar nova foto ao produto: ${insertError.message}`);
+          const { error: uploadError } = await this.supabaseService.client.storage
+            .from('produtos-fotos')
+            .upload(filePath, file.buffer, { contentType: file.mimetype });
+
+          if (uploadError) {
+            console.error('[Update Produto] Erro no upload no Storage:', uploadError.message);
+            throw new InternalServerErrorException(`Erro no upload da foto: ${uploadError.message}`);
+          }
+
+          const { data: { publicUrl } } = this.supabaseService.client.storage
+            .from('produtos-fotos')
+            .getPublicUrl(filePath);
+
+          const { error: insertError } = await this.supabaseService.client
+            .from('produto_imagens')
+            .insert([{ produto_id: id, url_path: publicUrl }]);
+
+          if (insertError) {
+            console.error('[Update Produto] Erro ao salvar URL no banco:', insertError.message);
+            throw new InternalServerErrorException(`Erro ao atrelar nova foto ao produto: ${insertError.message}`);
+          }
         }
       }
     }

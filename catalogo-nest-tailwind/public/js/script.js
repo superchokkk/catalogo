@@ -40,32 +40,37 @@ const criarCard = (produto) => {
     const priceArea = document.createElement('div');
     priceArea.className = 'mt-4 flex items-center gap-2 flex-wrap';
 
-    if (produto.preco_antigo) {
-        // Preço Novo (em vermelho)
+    if (produto.promocao || produto.preco_antigo) {
+        // Preço sempre fica vermelho se "promocao" for true ou se houver um preco_antigo
         const precoAtual = document.createElement('p');
         precoAtual.className = 'text-xl font-bold text-red-600';
         precoAtual.textContent = formatarMoeda(produto.preco);
-
-        // Badge de Desconto
-        const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
-        const badge = document.createElement('span');
-        badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
-        badge.textContent = `-${desconto}%`;
-
-        // Preço Antigo (riscado)
-        const precoAntigoEl = document.createElement('span');
-        precoAntigoEl.className = 'text-sm line-through text-slate-400';
-        precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
-
         priceArea.appendChild(precoAtual);
-        priceArea.appendChild(badge);
-        priceArea.appendChild(precoAntigoEl);
+
+        if (produto.preco_antigo) {
+            const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
+            const badge = document.createElement('span');
+            badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
+            badge.textContent = `-${desconto}%`;
+            
+            const precoAntigoEl = document.createElement('span');
+            precoAntigoEl.className = 'text-sm line-through text-slate-400';
+            precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
+            
+            priceArea.appendChild(badge);
+            priceArea.appendChild(precoAntigoEl);
+        } else {
+            // Caso seja marcado como promoção, mas sem preço antigo definido
+            const badge = document.createElement('span');
+            badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
+            badge.textContent = `PROMOÇÃO`;
+            priceArea.appendChild(badge);
+        }
     } else {
         // Preço Normal
         const precoAtual = document.createElement('p');
         precoAtual.className = 'text-xl font-bold text-slate-900';
         precoAtual.textContent = formatarMoeda(produto.preco);
-        
         priceArea.appendChild(precoAtual);
     }
     // --- FIM DA LÓGICA DE PREÇO ---
@@ -148,24 +153,36 @@ const updateUI = () => {
     const botaoC = document.getElementById('addButton');
     const paineisU = document.querySelectorAll('.painelU');
     const paineisD = document.querySelectorAll('.painelD');
+    const loginButton = document.getElementById('loginButton');
 
+    // 1. Esconde tudo por padrão
     if (botaoC) botaoC.style.display = 'none';
     paineisU.forEach(b => b.style.display = 'none');
     paineisD.forEach(b => b.style.display = 'none');
 
-    if (!token) return; // sem token, para aqui
+    // 2. Se não existe token válido, reseta o botão e para por aqui
+    if (!token || token === 'null' || token === 'undefined') {
+        if (loginButton) loginButton.textContent = 'Login';
+        return;
+    }
 
     const payload = parseJwt(token);
     const tempoAtual = Math.floor(Date.now() / 1000);
 
+    // 3. Se o token expirou ou é inválido, limpa do navegador
     if (!payload || !payload.exp || payload.exp <= tempoAtual) {
         localStorage.removeItem('token_supabase');
-        return; // token inválido ou expirado, para aqui
+        if (loginButton) loginButton.textContent = 'Login';
+        return;
     }
 
-    const nivelNum = Number(payload.user_data?.nivel ?? null);
+    if (payload.user_data?.nome) {
+        if (loginButton) loginButton.textContent = `Olá, ${payload.user_data.nome}`;
+    }
 
-    if (nivelNum === 0 || nivelNum === 1) {
+    // 4. Checagem blindada do nível (Evita que valores vazios sejam convertidos em 0)
+    const nivel = payload.user_data?.nivel;
+    if (nivel !== undefined && nivel !== null && (Number(nivel) === 0 || Number(nivel) === 1)) {
         if (botaoC) botaoC.style.display = 'inline-block';
         paineisU.forEach(b => b.style.display = 'inline-block');
         paineisD.forEach(b => b.style.display = 'inline-block');
@@ -211,7 +228,7 @@ function fecharELimparForm(modalId, formId) {
 }
 window.fecharELimparForm = fecharELimparForm;
 
-document.getElementById('imageInput').addEventListener('change', function(e) {
+document.getElementById('imageInput').addEventListener('change', function (e) {
     const container = document.getElementById('previewContainer');
     container.innerHTML = '';
 
@@ -234,7 +251,7 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
         const response = await fetch('/api/produtos/criar', {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${token}` 
+                'Authorization': `Bearer ${token}`
             },
             body: new FormData(e.target),
         });
@@ -269,7 +286,7 @@ function parseJwt(token) {
         // Ajusta os caracteres do Base64Url para Base64 padrão
         const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
         // Decodifica lidando com caracteres especiais (UTF-8)
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''));
 
@@ -281,14 +298,14 @@ function parseJwt(token) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const checkbox = document.getElementById("checkPromocional");
-  const field = document.getElementById("promocionalField");
+    const checkbox = document.getElementById("checkPromocional");
+    const field = document.getElementById("promocionalField");
 
-  checkbox.addEventListener("change", () => {
-    if (checkbox.checked) {
-      field.classList.remove("hidden");
-    } else {
-      field.classList.add("hidden");
-    }
-  });
+    checkbox.addEventListener("change", () => {
+        if (checkbox.checked) {
+            field.classList.remove("hidden");
+        } else {
+            field.classList.add("hidden");
+        }
+    });
 });
