@@ -120,37 +120,49 @@ document.getElementById('upImageInput').addEventListener('change', function (e) 
     //this.value = ''; // Limpa o input para permitir selecionar o mesmo arquivo novamente
 });
 
+document.getElementById('checkPromocional').addEventListener('change', function () {
+    const promocionalField = document.getElementById('promocionalField');
+    const upPromocional = document.getElementById('upPromocional');
+    const form = document.getElementById('upForm');
+
+    if (this.checked) {
+        promocionalField.classList.remove('hidden');
+    } else {
+        upPromocional.value = '';
+        promocionalField.classList.add('hidden');
+    }
+});
+
 document.getElementById('upForm').addEventListener('submit', async function (e) {
     e.preventDefault();
 
     const formData = new FormData();
     formData.append('nome', this.nome.value);
     formData.append('descricao', this.descricao.value);
+
     const isPromocional = document.getElementById('checkPromocional').checked;
     const valorBase = this.preco.value;
     const valorPromo = document.getElementById('upPromocional').value;
 
+    // ── Envia promocao como string booleana para o backend ────────────────
+    formData.append('promocao', isPromocional ? 'true' : 'false');
+
     if (isPromocional && valorPromo) {
-        formData.append('preco', valorPromo);       // O novo preço promocional vira o principal
-        formData.append('preco_antigo', valorBase); // Guarda o original para cálculo
+        formData.append('preco', valorPromo);       // preço promocional
+        formData.append('preco_antigo', valorBase); // preço original
     } else {
         formData.append('preco', valorBase);
-        formData.append('preco_antigo', '');        // Envia vazio para remover a promoção no banco
+        formData.append('preco_antigo', null);        // remove promoção no banco
     }
 
-    // Envia a lista de URLs que restaram (as que não foram deletadas)
     formData.append('imagensExistentes', JSON.stringify(imagensExistentes));
-
-    // Adiciona os novos arquivos binários
     imagensParaUpload.forEach(file => formData.append('imagens', file));
 
     try {
         const token = localStorage.getItem('token_supabase');
         const response = await fetch(`/api/produtos/${produtoAtualId}`, {
             method: 'PUT',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
+            headers: { 'Authorization': `Bearer ${token}` },
             body: formData,
         });
 

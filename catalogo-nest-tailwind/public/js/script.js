@@ -18,7 +18,7 @@ const criarCard = (produto) => {
     imgWrapper.style.cssText = 'height: 224px; overflow: hidden; flex-shrink: 0;';
 
     const imgEl = document.createElement('img');
-    imgEl.src = produto.produto_imagens?.[0]?.url_publica ?? '/placeholder.png';
+    imgEl.src = produto.produto_imagens?.[0]?.url_publica ?? 'https://placehold.co/400x300?text=Sem+Imagem';
     imgEl.alt = produto.nome;
     imgEl.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
     imgWrapper.appendChild(imgEl);
