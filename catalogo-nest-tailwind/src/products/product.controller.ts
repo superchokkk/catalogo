@@ -1,5 +1,5 @@
 // controllers/productController.js
-import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param } from '@nestjs/common';
+import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete } from '@nestjs/common';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
@@ -70,6 +70,17 @@ export class ProductController {
         } catch (error) {
             console.error('Erro no Update Controller:', error.message);
             throw new InternalServerErrorException('Erro ao atualizar produto.');
+        }
+    }
+
+    @Delete(':id')
+    @UseGuards(SupabaseAuthGuard)
+    async deleteProduct(@Param('id') id: string) {
+        try {
+            return await this.productService.deleteProduct(id);
+        } catch (error) {
+            console.error('Erro no Delete Controller:', error.message);
+            throw new InternalServerErrorException('Erro ao deletar produto.');
         }
     }
 }

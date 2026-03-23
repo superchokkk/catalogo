@@ -154,7 +154,6 @@ export class ProductService {
     if (imagensParaDeletar && imagensParaDeletar.length > 0) {
       const idsParaDeletar = imagensParaDeletar.map(img => img.id);
       for (const img of imagensParaDeletar) {
-        console.log(`[Update Produto] Imagem marcada para deleção: ID=${img.id}, URL=${img.url_path}`);
         const { error: delError } = await this.supabaseService.client
           .from('produto_imagens')
           .delete()
@@ -203,4 +202,47 @@ export class ProductService {
       }
     }
   }
+
+  async deleteProduct(id: string): Promise<void> {
+    const { data: imagens, error: erroImagens } = await this.supabaseService.client
+        .from('produto_imagens')
+        .select('id, url_path')
+        .eq('produto_id', id);
+
+    if (erroImagens) throw new InternalServerErrorException(erroImagens.message);
+
+    if (imagens && imagens.length > 0) {
+      const idsParaDeletar = imagens.map(img => img.id);
+      for (const img of imagens) {
+        const { error: delError } = await this.supabaseService.client
+          .from('produto_imagens')
+          .delete()
+          .eq('id', img.id);
+
+        if (delError) {
+          console.error('[Delete Produto] Erro ao deletar imagens antigas:', delError.message);
+          throw new InternalServerErrorException(`Erro ao remover imagens antigas: ${delError.message}`);
+        }
+      }
+    }
+
+    if (imagens && imagens.length > 0) {
+        const paths = imagens.map(img => img.url_path);
+
+        const { error: erroBucket } = await this.supabaseService.client
+            .storage
+            .from('produtos-imagens')
+            .remove(paths);
+
+        if (erroBucket) throw new InternalServerErrorException(erroBucket.message);
+    }
+
+    // 4. Deleta o produto
+    const { error } = await this.supabaseService.client
+        .from('produtos')
+        .delete()
+        .eq('id', id);
+
+    if (error) throw new InternalServerErrorException(error.message);
+}
 }

@@ -52,11 +52,11 @@ const criarCard = (produto) => {
             const badge = document.createElement('span');
             badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
             badge.textContent = `-${desconto}%`;
-            
+
             const precoAntigoEl = document.createElement('span');
             precoAntigoEl.className = 'text-sm line-through text-slate-400';
             precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
-            
+
             priceArea.appendChild(badge);
             priceArea.appendChild(precoAntigoEl);
         } else {
@@ -91,7 +91,14 @@ const criarCard = (produto) => {
     btnExcluir.onclick = async () => {
         if (!confirm(`Excluir "${produto.nome}"?`)) return;
         try {
-            await fetch(`/api/products/${produto.id}`, { method: 'DELETE' });
+            const token = localStorage.getItem('token_supabase');
+            const response = await fetch(`/api/produtos/${produto.id}`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` },
+            });
+            if (!response.ok) {
+                throw new Error(`Erro HTTP: ${response.status}`);
+            }
             carregarCatalogo();
         } catch (error) {
             statusEl.textContent = 'Erro ao excluir produto.';
