@@ -2,8 +2,18 @@
 module.exports = {
   content: ['./src/**/*.{ts,js,html}', './public/**/*.html'],
   theme: {
-    extend: {},
+    extend: {
+      colors: {
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+        },
+        background: 'var(--color-background)',
+        surface: 'var(--color-surface)',
+        text: 'var(--color-text)',
+        danger: 'var(--color-danger)',
+      }
+    },
   },
   plugins: [],
 }
-

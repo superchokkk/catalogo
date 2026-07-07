@@ -213,19 +213,27 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         });
         const result = await response.json();
 
-        if (!result.success) {
-            statusEl.textContent = `Erro no login: ${result.message}`;
+        if (!result.success || response.status === 401) {
+            alert("Usuário ou senha inválidos. Tente novamente.");
+            fecharELimparForm('loginModal', 'loginForm');
             return;
         }
-        //avisar login invalido
+
+        // Login bem-sucedido
         localStorage.setItem('token_supabase', result.accessToken);
         loginButton.textContent = `Olá, ${result.user.nome}`;
         fecharELimparForm('loginModal', 'loginForm');
-        statusEl.textContent = `Login bem-sucedido! ${result.nivel}`;
+        
+        statusEl.textContent = `Login bem-sucedido!`;
+        statusEl.style.color = "green";
+        
         updateUI();
         e.target.reset();
+
     } catch (error) {
+        console.error('Erro:', error);
         statusEl.textContent = 'Falha de conexão ao tentar login.';
+        statusEl.style.color = "red";
     }
 });
 
@@ -316,3 +324,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 });
+
+function abrirModalCadastro() {
+    fecharELimparForm('loginModal', 'loginForm');
+    document.getElementById('cadastroModal').classList.remove('hidden');
+}
+
+function abrirEsqueciSenha() {
+    alert("Função de recuperação de senha será implementada em breve.");
+}
