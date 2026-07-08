@@ -21,11 +21,14 @@ function renderizarPreco(produto) {
 
         const antigo = document.createElement('span');
         antigo.className = 'desc-preco-antigo';
+        antigo.style.color = '#ef4444'; // vermelho (sobrescreve qualquer cor definida no CSS da classe)
         antigo.textContent = formatarMoeda(produto.preco_antigo);
 
         const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
         const badge = document.createElement('span');
         badge.className = 'desc-preco-badge';
+        badge.style.backgroundColor = '#dcfce7'; // verde claro (fundo)
+        badge.style.color = '#15803d'; // verde escuro (texto)
         badge.textContent = `-${desconto}%`;
 
         topRow.appendChild(antigo);
@@ -35,8 +38,8 @@ function renderizarPreco(produto) {
 
     const atual = document.createElement('p');
     atual.className = 'desc-preco-atual';
-    // Se for promo, pode querer adicionar uma class para deixar vermelho também aqui
-    if(produto.preco_antigo) atual.style.color = '#dc2626'; 
+    // Preço atual sempre usa a cor de texto padrão do tema, com ou sem promoção
+    atual.style.color = 'var(--color-text)';
     atual.textContent = formatarMoeda(produto.preco);
     wrapper.appendChild(atual);
 }

@@ -15,8 +15,10 @@
 <body class="min-h-screen bg-background text-text transition-colors duration-300">
     <main class="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
         <header class="mb-8 flex items-center justify-between">
-            <div>
-                <h1 class="text-3xl font-bold tracking-tight">Catálogo de Produtos</h1>
+            <div class="header-logo-wrapper">
+                <div class="header-logo"></div>
+
+                <h1 class="header-title">Catálogo de Produtos</h1>
             </div>
             <button id="loginButton"
                 class="px-4 py-2 rounded-md bg-surface text-text shadow-sm font-medium border border-opacity-20 border-text hover:bg-primary hover:text-white transition"
@@ -24,7 +26,8 @@
                 Login
             </button>
 
-            <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div id="loginModal"
+                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
                 <div class="bg-surface rounded-lg shadow-lg w-96 p-6">
                     <h2 class="text-xl font-bold mb-4 text-text">Login</h2>
                     <form id="loginForm" class="space-y-4">
@@ -45,15 +48,15 @@
                                 placeholder="********" />
                         </div>
 
-                        <span id="loginError" class="hidden text-xs text-danger font-medium">E-mail ou senha incorretos.</span>
+                        <span id="loginError" class="hidden text-xs text-danger font-medium">E-mail ou senha
+                            incorretos.</span>
 
                         <div class="flex justify-between items-center pt-2">
                             <p class="text-sm text-text opacity-80">
                                 Não tem conta?
-                                <a href="#" onclick="abrirModalCadastro()"
+                                <a href="#" onclick="fecharELimparForm('loginModal', 'loginForm'); document.getElementById('cadastroModal').classList.remove('hidden')"
                                     class="text-primary font-semibold hover:underline">Cadastre-se</a>
                             </p>
-
                             <div class="flex space-x-2">
                                 <button type="button"
                                     class="px-4 py-2 rounded-md bg-gray-300 text-black hover:bg-gray-400"
@@ -63,6 +66,62 @@
                                 <button type="submit"
                                     class="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary-hover transition-colors">
                                     Entrar
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div id="cadastroModal"
+                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-surface rounded-lg shadow-lg w-96 p-6">
+                    <h2 class="text-xl font-bold mb-4 text-text">Criar Conta</h2>
+                    <form id="cadastroForm" class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-text opacity-90">Nome</label>
+                            <input type="text" name="nome" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                placeholder="Seu nome completo" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text opacity-90">Email</label>
+                            <input type="email" name="email" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                placeholder="seu@email.com" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text opacity-90">Senha</label>
+                            <input type="password" name="senha" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                placeholder="********" />
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-text opacity-90">Confirmar Senha</label>
+                            <input type="password" name="confirmarSenha" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 focus:ring-2 focus:ring-primary outline-none"
+                                placeholder="********" />
+                        </div>
+
+                        <span id="cadastroError" class="hidden text-xs text-danger font-medium">Erro ao criar conta.
+                            Verifique os dados.</span>
+
+                        <div class="flex justify-between items-center pt-2">
+                            <p class="text-sm text-text opacity-80">
+                                Já tem conta?
+                                <a href="#" onclick="fecharELimparForm('cadastroModal', 'cadastroForm'); document.getElementById('loginModal').classList.remove('hidden')"
+                                    class="text-primary font-semibold hover:underline">Entrar</a>
+                            </p>
+
+                            <div class="flex space-x-2">
+                                <button type="button"
+                                    class="px-4 py-2 rounded-md bg-gray-300 text-black hover:bg-gray-400"
+                                    onclick="fecharELimparForm('cadastroModal', 'cadastroForm')">
+                                    Cancelar
+                                </button>
+                                <button type="submit"
+                                    class="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary-hover transition-colors">
+                                    Cadastrar
                                 </button>
                             </div>
                         </div>
@@ -119,7 +178,8 @@
                             onclick="fecharELimparFormFotos('addModal', 'addForm')">
                             Cancelar
                         </button>
-                        <button type="submit" class="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary-hover transition-colors">
+                        <button type="submit"
+                            class="px-4 py-2 rounded-md bg-primary text-white hover:bg-primary-hover transition-colors">
                             Adicionar
                         </button>
                     </div>
@@ -215,7 +275,8 @@
                 <div class="panel-images bg-background">
 
                     <div class="main-image-wrap bg-surface" id="descMainImgWrap">
-                        <div class="placeholder-img bg-surface text-text opacity-50" id="descMainPlaceholder">Img 1</div>
+                        <div class="placeholder-img bg-surface text-text opacity-50" id="descMainPlaceholder">Img 1
+                        </div>
                         <img id="descMainImg" src="" alt="Imagem principal do produto" style="display:none;" />
                     </div>
 
@@ -240,7 +301,7 @@
                         </div>
                         <div class="price-area bg-surface">
                             <div id="descPrecoWrapper" class="desc-preco-wrapper">
-                                </div>
+                            </div>
                         </div>
                         <div class="action-bar bg-primary">
                             <button type="button" class="btn-consult text-white" id="btnConsult">
@@ -252,10 +313,11 @@
 
             </div>
         </div>
-        
+
         <p id="status" class="mb-6 text-sm text-text opacity-80"></p>
 
         <section id="catalogo" class="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3"></section>
     </main>
 </body>
+
 </html>

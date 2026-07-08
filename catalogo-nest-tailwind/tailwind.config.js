@@ -12,6 +12,9 @@ module.exports = {
         surface: 'var(--color-surface)',
         text: 'var(--color-text)',
         danger: 'var(--color-danger)',
+      },
+      backgroundImage: {
+        'logo-tema': 'var(--img-logo)',
       }
     },
   },

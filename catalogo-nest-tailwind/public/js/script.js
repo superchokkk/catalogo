@@ -6,6 +6,11 @@ let currentUserRole = null;
 const statusEl = document.getElementById('mensagemStatus') || document.createElement('div');
 const catalogoEl = document.getElementById('catalogo');
 
+// --- ESTADO DA PAGINAÇÃO ---
+const ITENS_POR_PAGINA = 12;
+let todosOsProdutos = [];
+let paginaAtual = 1;
+
 const formatarMoeda = (valor) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
@@ -40,21 +45,25 @@ const criarCard = (produto) => {
     const priceArea = document.createElement('div');
     priceArea.className = 'mt-4 flex items-center gap-2 flex-wrap';
 
-    if (produto.promocao || produto.preco_antigo) {
-        // Preço sempre fica vermelho se "promocao" for true ou se houver um preco_antigo
+    if (produto.promocao) {
+        // Preço atual usa a cor de texto padrão do tema (--color-text)
         const precoAtual = document.createElement('p');
-        precoAtual.className = 'text-xl font-bold text-red-600';
+        precoAtual.className = 'text-xl font-bold';
+        precoAtual.style.color = 'var(--color-text)';
         precoAtual.textContent = formatarMoeda(produto.preco);
         priceArea.appendChild(precoAtual);
 
         if (produto.preco_antigo) {
             const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
             const badge = document.createElement('span');
-            badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
+            badge.className = 'text-xs font-bold px-2 py-1 rounded';
+            badge.style.backgroundColor = '#dcfce7'; // verde claro (fundo)
+            badge.style.color = '#15803d'; // verde escuro (texto)
             badge.textContent = `-${desconto}%`;
 
             const precoAntigoEl = document.createElement('span');
-            precoAntigoEl.className = 'text-sm line-through text-slate-400';
+            precoAntigoEl.className = 'text-sm line-through';
+            precoAntigoEl.style.color = '#ef4444'; // vermelho
             precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
 
             priceArea.appendChild(badge);
@@ -62,14 +71,17 @@ const criarCard = (produto) => {
         } else {
             // Caso seja marcado como promoção, mas sem preço antigo definido
             const badge = document.createElement('span');
-            badge.className = 'bg-red-100 text-red-700 text-xs font-bold px-2 py-1 rounded';
+            badge.className = 'text-xs font-bold px-2 py-1 rounded';
+            badge.style.backgroundColor = '#dcfce7'; // verde claro (fundo)
+            badge.style.color = '#15803d'; // verde escuro (texto)
             badge.textContent = `PROMOÇÃO`;
             priceArea.appendChild(badge);
         }
     } else {
         // Preço Normal
         const precoAtual = document.createElement('p');
-        precoAtual.className = 'text-xl font-bold text-slate-900';
+        precoAtual.className = 'text-xl font-bold';
+        precoAtual.style.color = 'var(--color-text)';
         precoAtual.textContent = formatarMoeda(produto.preco);
         priceArea.appendChild(precoAtual);
     }
@@ -126,6 +138,115 @@ const criarCard = (produto) => {
     return card;
 };
 
+// --- LÓGICA DE PAGINAÇÃO ---
+
+// Garante que exista um container para os controles de paginação logo após o catálogo
+const obterContainerPaginacao = () => {
+    let paginacaoEl = document.getElementById('paginacao');
+    if (!paginacaoEl) {
+        paginacaoEl = document.createElement('div');
+        paginacaoEl.id = 'paginacao';
+        paginacaoEl.className = 'flex items-center justify-center gap-2 flex-wrap';
+        paginacaoEl.style.marginTop = '3rem'; // aplicado via style para não depender do build/purge do Tailwind
+        catalogoEl.insertAdjacentElement('afterend', paginacaoEl);
+    }
+    return paginacaoEl;
+};
+
+const criarBotaoPagina = (label, { ativo = false, desabilitado = false, onClick = null } = {}) => {
+    const btn = document.createElement('button');
+    btn.textContent = label;
+    btn.disabled = desabilitado;
+    btn.className = ativo
+        ? 'px-3 py-1.5 rounded-full text-sm font-semibold bg-white text-slate-900 border border-white'
+        : 'px-3 py-1.5 rounded-full text-sm font-medium border border-slate-500 bg-transparent text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent';
+    // Obs: a distância em relação aos cards fica no container (#paginacao), não em cada botão —
+    // colocar margem em cada botão individual não afasta a linha inteira dos cards, só desalinha os botões entre si.
+    if (onClick && !desabilitado) {
+        btn.onclick = onClick;
+    }
+    return btn;
+};
+
+const renderizarControlesPaginacao = (totalPaginas) => {
+    const paginacaoEl = obterContainerPaginacao();
+    paginacaoEl.innerHTML = '';
+
+    if (totalPaginas <= 1) return; // Não mostra controles se só há uma página
+
+    // Botão "Anterior"
+    paginacaoEl.appendChild(
+        criarBotaoPagina('Anterior', {
+            desabilitado: paginaAtual === 1,
+            onClick: () => irParaPagina(paginaAtual - 1),
+        })
+    );
+
+    // Botões numerados (com reticências para muitas páginas)
+    const paginasParaMostrar = obterPaginasVisiveis(paginaAtual, totalPaginas);
+    paginasParaMostrar.forEach((item) => {
+        if (item === '...') {
+            const span = document.createElement('span');
+            span.textContent = '…';
+            span.className = 'px-2 text-slate-400 select-none';
+            paginacaoEl.appendChild(span);
+        } else {
+            paginacaoEl.appendChild(
+                criarBotaoPagina(String(item), {
+                    ativo: item === paginaAtual,
+                    onClick: () => irParaPagina(item),
+                })
+            );
+        }
+    });
+
+    // Botão "Próxima"
+    paginacaoEl.appendChild(
+        criarBotaoPagina('Próxima', {
+            desabilitado: paginaAtual === totalPaginas,
+            onClick: () => irParaPagina(paginaAtual + 1),
+        })
+    );
+};
+
+// Monta a lista de páginas visíveis, ex: [1, '...', 4, 5, 6, '...', 12]
+const obterPaginasVisiveis = (atual, total, delta = 1) => {
+    const paginas = [];
+    const inicio = Math.max(2, atual - delta);
+    const fim = Math.min(total - 1, atual + delta);
+
+    paginas.push(1);
+    if (inicio > 2) paginas.push('...');
+    for (let i = inicio; i <= fim; i++) paginas.push(i);
+    if (fim < total - 1) paginas.push('...');
+    if (total > 1) paginas.push(total);
+
+    return paginas;
+};
+
+const renderizarPagina = (pagina) => {
+    const totalPaginas = Math.max(1, Math.ceil(todosOsProdutos.length / ITENS_POR_PAGINA));
+    paginaAtual = Math.min(Math.max(1, pagina), totalPaginas);
+
+    const inicio = (paginaAtual - 1) * ITENS_POR_PAGINA;
+    const fim = inicio + ITENS_POR_PAGINA;
+    const produtosDaPagina = todosOsProdutos.slice(inicio, fim);
+
+    catalogoEl.innerHTML = '';
+    produtosDaPagina.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
+
+    renderizarControlesPaginacao(totalPaginas);
+    updateUI();
+};
+
+const irParaPagina = (pagina) => {
+    renderizarPagina(pagina);
+    // Rola suavemente até o topo do catálogo ao trocar de página
+    catalogoEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+
+// --- FIM DA LÓGICA DE PAGINAÇÃO ---
+
 export async function carregarCatalogo() {
     try {
         const token = localStorage.getItem('token_supabase');
@@ -138,14 +259,16 @@ export async function carregarCatalogo() {
 
         const { produtos, podeAtualizarUI } = await resposta.json();
         if (!Array.isArray(produtos) || produtos.length === 0) {
+            todosOsProdutos = [];
+            catalogoEl.innerHTML = '';
+            obterContainerPaginacao().innerHTML = '';
             statusEl.textContent = 'Nenhum produto encontrado.';
             return;
         }
-        catalogoEl.innerHTML = '';
-        produtos.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
-        statusEl.textContent = 'Produtos carregados.';
 
-        updateUI();
+        todosOsProdutos = produtos;
+        renderizarPagina(1); // Sempre volta para a primeira página ao recarregar
+        statusEl.textContent = 'Produtos carregados.';
 
     } catch (erro) {
         console.error('ERRO GRAVE no carregarCatalogo:', erro);
@@ -223,10 +346,10 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
         localStorage.setItem('token_supabase', result.accessToken);
         loginButton.textContent = `Olá, ${result.user.nome}`;
         fecharELimparForm('loginModal', 'loginForm');
-        
+
         statusEl.textContent = `Login bem-sucedido!`;
         statusEl.style.color = "green";
-        
+
         updateUI();
         e.target.reset();
 

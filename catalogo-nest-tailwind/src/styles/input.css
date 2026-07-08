@@ -24,9 +24,12 @@
     --btn-delete-hover: #b91c1c;
     --btn-public: #2394e1;
     --btn-public-hover: #1b76b3;
+
+    /* Logo padrão */
+    --img-logo: url('/image/logo.jpg');
   }
 
-  /* Exemplo de Tema: versão clara para outra empresa/contexto */
+  /* tema claro */
   .tema-claro {
     --color-primary: #2394e1;
     --color-primary-hover: #1b76b3;
@@ -36,7 +39,7 @@
     --color-text: #1a1a1a;          /* Texto escuro */
   }
 
-  /* Exemplo de Tema: Fundo Escuro para outra empresa (mantido do seu original) */
+  /* tema escuro */
   .tema-empresa-escura {
     --color-primary: #f59e0b;       /* Laranja */
     --color-primary-hover: #d97706;
@@ -44,5 +47,8 @@
     --color-background: #111827;    /* Fundo escuro para a página */
     --color-surface: #1f2937;       /* Fundo um pouco mais claro para os modais */
     --color-text: #f9fafb;          /* Texto branco */
+
+    /* Logo padrão */
+    --img-logo: url('/image/logo.jpg');
   }
 }

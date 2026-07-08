@@ -1,4 +1,48 @@
 /* Utilizando as variáveis criadas no input.css */
+
+/* ══════════════════════
+   CABEÇALHO E LOGO
+══════════════════════ */
+
+/* O contentor que envolve a logo e o título */
+.header-logo-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 16px; 
+}
+
+/* O "Quadrado" da logo */
+.header-logo {
+    background-image: var(--img-logo);
+    
+    /* Centra a imagem e dá-lhe uma margem interna (80% do tamanho do quadrado) */
+    background-size: 80%; 
+    background-repeat: no-repeat;
+    background-position: center;
+    
+    /* Estética do Quadrado */
+    background-color: var(--color-surface); /* Usa a cor de superfície do tema */
+    border-radius: 12px; /* Cantos arredondados */
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Sombra suave para destacar */
+    border: 1px solid rgba(0,0,0,0.05); /* Borda muito subtil */
+    
+    /* Tamanho Quadrado para Telemóveis */
+    height: 100px; 
+    width: 160px; 
+    
+    /* Impede que o quadrado seja esmagado se o ecrã for muito pequeno */
+    flex-shrink: 0; 
+    transition: all 0.3s ease;
+}
+
+/* O texto do título */
+.header-title {
+    font-size: 1.5rem; 
+    font-weight: 700;
+    letter-spacing: -0.025em;
+    color: var(--color-text);
+}
+
 .publicS {
     background-color: var(--btn-public);
     color: #ffffff;
@@ -355,6 +399,28 @@
 
     .panel-images {
         max-height: 45vh;
+    }
+}
+/* ── Responsividade: Ecrãs Médios (Tablets) ── */
+@media (min-width: 640px) {
+    .header-logo-wrapper {
+        gap: 16px; /* Aumenta a distância do texto */
+    }
+    .header-logo {
+        width: 96px; /* Aumenta a largura da logo */
+    }
+    .header-title {
+        font-size: 1.875rem; /* Título ligeiramente maior */
+    }
+}
+
+/* ── Responsividade: Ecrãs Grandes (Monitores) ── */
+@media (min-width: 768px) {
+    .header-logo-wrapper {
+        gap: 24px; /* Espaçamento ainda maior */
+    }
+    .header-logo {
+        width: 128px; /* Logo no tamanho máximo */
     }
 }
 
