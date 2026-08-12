@@ -115,13 +115,14 @@ export class ProductService {
     }
   }
 
-  async updateProductWithImages(id: string, productData: any, files: Array<Express.Multer.File>, imagensManter: string[], userId: string) {
+  async updateProductWithImages(id: string, productData: any, files: Array<Express.Multer.File>, imagensManter: string[] | string, userId: string) {
     const precoAtual = parseFloat(productData.preco.toString().replace(',', '.'));
     const precoAntigo = productData.preco_antigo
       ? parseFloat(productData.preco_antigo.toString().replace(',', '.'))
       : null;
     const isPromocao = productData.promocao === 'true';
 
+    // 1. Atualiza os dados do produto
     const { error: updateError } = await this.supabaseService.client.from('produtos').update({
       nome: productData.nome,
       descricao: productData.descricao,
@@ -132,39 +133,50 @@ export class ProductService {
     }).eq('id', id);
 
     if (updateError) {
-      console.error('[Update Produto] Erro ao atualizar tabela produtos:', updateError.message);
-      throw new InternalServerErrorException(`Erro ao atualizar dados do produto: ${updateError.message}`);
+      throw new InternalServerErrorException(`Erro ao atualizar dados: ${updateError.message}`);
     }
 
+    // 2. Busca as imagens atuais no banco
     const { data: imagensAtuais, error: fetchImgError } = await this.supabaseService.client
       .from('produto_imagens')
       .select('id, url_path')
       .eq('produto_id', id);
 
-    if (fetchImgError) {
-      console.error('[Update Produto] Erro ao buscar imagens atuais:', fetchImgError.message);
-      throw new InternalServerErrorException('Erro ao buscar imagens do produto no banco.');
-    }
+    if (fetchImgError) throw new InternalServerErrorException('Erro ao buscar imagens no banco.');
 
-    // Filtra apenas as imagens que NÃO constam no array imagensManter enviado pelo frontend
+    // Garante que imagensManter seja um array
+    const urlsParaManter = Array.isArray(imagensManter) ? imagensManter : (imagensManter ? [imagensManter] : []);
+
+    // Filtra as imagens que devem ser apagadas
     const imagensParaDeletar = imagensAtuais?.filter(
-      (img) => !imagensManter.includes(img.url_path)
+      (img) => !urlsParaManter.includes(img.url_path)
     );
 
     if (imagensParaDeletar && imagensParaDeletar.length > 0) {
-      const idsParaDeletar = imagensParaDeletar.map(img => img.id);
-      for (const img of imagensParaDeletar) {
-        const { error: delError } = await this.supabaseService.client
-          .from('produto_imagens')
-          .delete()
-          .eq('id', img.id);
+      const pathsParaStorage: string[] = [];
 
-        if (delError) {
-          console.error('[Update Produto] Erro ao deletar imagens antigas:', delError.message);
-          throw new InternalServerErrorException(`Erro ao remover imagens antigas: ${delError.message}`);
+      for (const img of imagensParaDeletar) {
+        // Deleta do banco de dados
+        await this.supabaseService.client.from('produto_imagens').delete().eq('id', img.id);
+
+        // EXTRAÇÃO À PROVA DE FALHAS: Pega apenas o último fragmento da URL (o nome do arquivo)
+        const fileName = img.url_path.split('/').pop()?.split('?')[0];
+        
+        if (fileName) {
+          // Reconstrói o caminho idêntico ao do bucket: produtos/ID/arquivo.jpeg
+          const caminhoExato = `produtos/${id}/${decodeURIComponent(fileName)}`;
+          pathsParaStorage.push(caminhoExato);
         }
       }
+
+      // Deleta os arquivos físicos do Bucket
+      if (pathsParaStorage.length > 0) {
+        console.log('[DEBUG UPDATE] Apagando do Storage:', pathsParaStorage);
+        await this.supabaseService.client.storage.from('produtos-fotos').remove(pathsParaStorage);
+      }
     }
+
+    // 3. Lógica de Upload de Novas Imagens
     if (files && files.length > 0) {
       const novasRefs: { produto_id: string; url_path: string }[] = [];
 
@@ -180,10 +192,7 @@ export class ProductService {
             upsert: true
           });
 
-        if (uError) {
-          console.error('[Update Produto] Erro ao fazer upload:', uError.message);
-          throw new InternalServerErrorException(`Erro ao enviar imagem: ${uError.message}`);
-        }
+        if (uError) throw new InternalServerErrorException(`Erro no upload: ${uError.message}`);
 
         const { data: { publicUrl } } = this.supabaseService.client.storage
           .from('produtos-fotos')
@@ -192,18 +201,12 @@ export class ProductService {
         novasRefs.push({ produto_id: id, url_path: publicUrl });
       }
 
-      const { error: iError } = await this.supabaseService.client
-        .from('produto_imagens')
-        .insert(novasRefs);
-
-      if (iError) {
-        console.error('[Update Produto] Erro ao salvar referências de imagens:', iError.message);
-        throw new InternalServerErrorException(`Erro ao salvar referências das imagens: ${iError.message}`);
-      }
+      await this.supabaseService.client.from('produto_imagens').insert(novasRefs);
     }
   }
 
   async deleteProduct(id: string): Promise<void> {
+    // 1. Busca as imagens vinculadas ao produto
     const { data: imagens, error: erroImagens } = await this.supabaseService.client
         .from('produto_imagens')
         .select('id, url_path')
@@ -212,37 +215,43 @@ export class ProductService {
     if (erroImagens) throw new InternalServerErrorException(erroImagens.message);
 
     if (imagens && imagens.length > 0) {
-      const idsParaDeletar = imagens.map(img => img.id);
-      for (const img of imagens) {
-        const { error: delError } = await this.supabaseService.client
-          .from('produto_imagens')
-          .delete()
-          .eq('id', img.id);
+      const pathsParaStorage: string[] = [];
 
-        if (delError) {
-          console.error('[Delete Produto] Erro ao deletar imagens antigas:', delError.message);
-          throw new InternalServerErrorException(`Erro ao remover imagens antigas: ${delError.message}`);
+      for (const img of imagens) {
+        // Pega apenas o nome do arquivo no final da URL
+        const fileName = img.url_path.split('/').pop()?.split('?')[0];
+        
+        if (fileName) {
+          // Monta a string exata para o bucket
+          const caminhoExato = `produtos/${id}/${decodeURIComponent(fileName)}`;
+          pathsParaStorage.push(caminhoExato);
         }
       }
+
+      // 2. Apaga todas as imagens físicas de uma vez no Storage
+      if (pathsParaStorage.length > 0) {
+          console.log('[DEBUG DELETE] Apagando do Storage:', pathsParaStorage);
+          const { error: erroBucket } = await this.supabaseService.client
+              .storage
+              .from('produtos-fotos') 
+              .remove(pathsParaStorage);
+
+          if (erroBucket) {
+              console.error('[Delete Produto] Erro no bucket:', erroBucket.message);
+              // Não vamos travar a exclusão do produto se a foto falhar
+          }
+      }
+      
+      // 3. Deleta as referências na tabela produto_imagens
+      await this.supabaseService.client.from('produto_imagens').delete().eq('produto_id', id);
     }
 
-    if (imagens && imagens.length > 0) {
-        const paths = imagens.map(img => img.url_path);
-
-        const { error: erroBucket } = await this.supabaseService.client
-            .storage
-            .from('produtos-imagens')
-            .remove(paths);
-
-        if (erroBucket) throw new InternalServerErrorException(erroBucket.message);
-    }
-
-    // 4. Deleta o produto
+    // 4. Por fim, deleta o produto da tabela produtos
     const { error } = await this.supabaseService.client
         .from('produtos')
         .delete()
         .eq('id', id);
 
     if (error) throw new InternalServerErrorException(error.message);
-}
+  }
 }

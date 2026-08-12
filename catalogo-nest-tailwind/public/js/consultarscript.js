@@ -3,6 +3,8 @@
 ───────────────────────────────────────── */
 let consultaImages   = [];
 let consultaActiveIdx = 0;
+let produtoAtualConsulta = null;
+const zap = '5545999650583';
 
 const formatarMoeda = (valor) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
@@ -48,6 +50,8 @@ function renderizarPreco(produto) {
    Abrir — preenche com dados do produto
 ───────────────────────────────────────── */
 export function abrirModalConsulta(produto) {
+    produtoAtualConsulta = produto;
+
     document.getElementById('descNome').value      = produto.nome      || '';
     document.getElementById('descDescricao').value = produto.descricao || '';
 
@@ -140,13 +144,6 @@ document.getElementById('descScrollRight').addEventListener('click', () => {
         thumbAtiva.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
     }
 });
-/* ─────────────────────────────────────────
-   Botão Consulte-nos
-───────────────────────────────────────── */
-document.getElementById('btnConsult').addEventListener('click', () => {
-    const nome = document.getElementById('descNome').value || 'este produto';
-    alert(`Obrigado pelo interesse em "${nome}"! Entraremos em contato.`);
-});
 
 /* ─────────────────────────────────────────
    Fechar clicando no backdrop
@@ -159,3 +156,37 @@ document.getElementById('descModal').addEventListener('click', function (e) {
    Init
 ───────────────────────────────────────── */
 consultaRenderThumbs();
+
+/* ─────────────────────────────────────────
+   chamar no zap
+───────────────────────────────────────── */
+const btnConsult = document.getElementById('btnConsult');
+btnConsult.addEventListener('click', () => {
+    const nome = loginButton.textContent;
+    let frase = "";
+    if (nome === "Login") {
+        frase = "";
+    } else if (nome.startsWith("Olá,")) {
+        const usuario = nome.replace("Olá, ", "").trim();
+        frase = `Me chamo ${usuario}. `;
+    }
+
+    const vlrAtualFormatado = formatarMoeda(produtoAtualConsulta.preco);
+    let vlrProduto = "";
+    if (produtoAtualConsulta.promocao) {
+        if (produtoAtualConsulta.preco_antigo) {
+            const vlrAntigoFormatado = formatarMoeda(produtoAtualConsulta.preco_antigo);
+            vlrProduto = 'que esta em promoção, de ' + vlrAntigoFormatado + ' por ' + vlrAtualFormatado;
+        } else {
+            vlrProduto = 'que esta em promoção, no valor de ' + vlrAtualFormatado;
+        }
+    } else {
+        vlrProduto = 'no valor de ' + vlrAtualFormatado;
+    }
+
+    const nomeProduto = document.getElementById('descNome').value;
+    const mensagem = `Olá! ${frase}Tenho interesse no produto: ${nomeProduto}, ${vlrProduto}.\nGostaria de mais informações.`;
+    const textoCodificado = encodeURIComponent(mensagem);
+    const urlWhatsApp = `https://wa.me/${zap}?text=${textoCodificado}`;
+    window.open(urlWhatsApp, '_blank');
+});

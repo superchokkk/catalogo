@@ -1,52 +1,199 @@
 import { abrirModalEdicao } from './updatescript.js';
 import { abrirModalConsulta } from './consultarscript.js';
 
-let currentUserRole = null;
+// ==========================================
+// 1. VARIÁVEIS DE ESTADO E ELEMENTOS GLOBAIS
+// ==========================================
+let currentUser = null;
+let todosOsProdutos = [];
+let paginaAtual = 1;
+const ITENS_POR_PAGINA = 3;
 
 const statusEl = document.getElementById('mensagemStatus') || document.createElement('div');
 const catalogoEl = document.getElementById('catalogo');
-
-// --- ESTADO DA PAGINAÇÃO ---
-const ITENS_POR_PAGINA = 3;
-let todosOsProdutos = [];
-let paginaAtual = 1;
+const loginButton = document.getElementById('loginButton');
 
 const formatarMoeda = (valor) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(valor);
 
+// ==========================================
+// 2. AUTENTICAÇÃO E SESSÃO
+// ==========================================
+async function verificarSessao() {
+    try {
+        const resposta = await fetch('/api/auth/me');
+        if (resposta.ok) {
+            currentUser = await resposta.json();
+        } else {
+            currentUser = null;
+        }
+    } catch (erro) {
+        console.error('Erro ao verificar sessão:', erro);
+        currentUser = null;
+    } finally {
+        updateUI(); 
+    }
+}
+
+async function realizarLogout() {
+    try {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        currentUser = null;
+        alert('Você foi deslogado com sucesso!');
+        window.location.reload(); 
+    } catch (erro) {
+        console.error('Erro ao tentar deslogar:', erro);
+    }
+}
+
+document.getElementById('loginForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const formData = new FormData(e.target);
+    const data = Object.fromEntries(formData.entries());
+
+    try {
+        const response = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data),
+        });
+
+        if (!response.ok) {
+            alert("Usuário ou senha inválidos. Tente novamente.");
+            fecharELimparForm('loginModal', 'loginForm');
+            return;
+        }
+
+        statusEl.textContent = `Login bem-sucedido!`;
+        statusEl.style.color = "green";
+        fecharELimparForm('loginModal', 'loginForm');
+        
+        await verificarSessao(); 
+        
+        // Atualiza os cards para mostrar os botões de edição após logar
+        if (todosOsProdutos.length > 0) {
+            renderizarPagina(paginaAtual);
+        }
+
+    } catch (error) {
+        console.error('Erro:', error);
+        statusEl.textContent = 'Falha de conexão ao tentar login.';
+        statusEl.style.color = "red";
+    }
+});
+
+// ==========================================
+// 3. ATUALIZAÇÃO DE INTERFACE (UI)
+// ==========================================
+const updateUI = () => {
+    const containerAcoesProduto = document.getElementById('containerAcoesProduto');
+    
+    // Reset do container de adicionar produto
+    if (containerAcoesProduto) containerAcoesProduto.innerHTML = ''; 
+
+    // Estado Deslogado
+    if (!currentUser) {
+        if (loginButton) {
+            loginButton.textContent = 'Login';
+            loginButton.onclick = () => document.getElementById('loginModal').classList.remove('hidden');
+        }
+        const btnLogoutExistente = document.getElementById('btnSairDinamico');
+        if (btnLogoutExistente) btnLogoutExistente.remove();
+        return;
+    }
+
+    // Estado Logado
+    if (loginButton) {
+        loginButton.textContent = `Olá, ${currentUser.nome || 'Usuário'}`;
+        loginButton.onclick = null; 
+    }
+
+    if (!document.getElementById('btnSairDinamico')) {
+        const btnLogout = document.createElement('button');
+        btnLogout.id = 'btnSairDinamico';
+        btnLogout.className = 'ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded text-sm transition-colors shadow-sm';
+        btnLogout.style.backgroundColor = '#dc2626';
+        btnLogout.style.color = '#ffffff';
+        btnLogout.textContent = 'Sair';
+        btnLogout.onclick = realizarLogout;
+        
+        if (loginButton && loginButton.parentNode) {
+            loginButton.parentNode.insertBefore(btnLogout, loginButton.nextSibling);
+        }
+    }
+
+    // Injeção de Botões (Apenas Administradores)
+    const isAdmin = currentUser.nivel === 0 || currentUser.nivel === 1;
+    
+    if (isAdmin && containerAcoesProduto) {
+        const btnCadastrar = document.createElement('button');
+        btnCadastrar.className = 'painelC mb-6'; 
+        btnCadastrar.textContent = 'Adicionar Produto';
+        btnCadastrar.onclick = () => document.getElementById('addModal').classList.remove('hidden');
+        containerAcoesProduto.appendChild(btnCadastrar);
+    }
+};
+
+// ==========================================
+// 4. CATÁLOGO E CARDS DE PRODUTO
+// ==========================================
+export async function carregarCatalogo() {
+    try {
+        const resposta = await fetch('/api/produtos/listagem');
+        if (!resposta.ok) throw new Error(`Status: ${resposta.status}`);
+
+        const data = await resposta.json();
+        // Proteção extra: verifica se o backend devolveu o array diretamente ou dentro de { produtos: [] }
+        const produtosArray = Array.isArray(data) ? data : data.produtos;
+        
+        if (!Array.isArray(produtosArray) || produtosArray.length === 0) {
+            todosOsProdutos = [];
+            catalogoEl.innerHTML = '';
+            obterContainerPaginacao().innerHTML = '';
+            statusEl.textContent = 'Nenhum produto encontrado.';
+            return;
+        }
+
+        todosOsProdutos = produtosArray;
+        renderizarPagina(1);
+        statusEl.textContent = ''; // Limpa mensagem de status
+
+    } catch (erro) {
+        console.error('ERRO no carregarCatalogo:', erro);
+        statusEl.textContent = 'Não foi possível carregar o catálogo agora.';
+    }
+}
+
 const criarCard = (produto) => {
     const card = document.createElement('div');
-    card.className = 'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md';
-    card.style.cssText = 'display: flex; flex-direction: column;';
+    card.className = 'overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md flex flex-col';
 
+    // Imagem
     const imgWrapper = document.createElement('div');
     imgWrapper.style.cssText = 'height: 224px; overflow: hidden; flex-shrink: 0;';
-
     const imgEl = document.createElement('img');
     imgEl.src = produto.produto_imagens?.[0]?.url_publica ?? 'https://placehold.co/400x300?text=Sem+Imagem';
     imgEl.alt = produto.nome;
     imgEl.style.cssText = 'width: 100%; height: 100%; object-fit: cover; display: block;';
     imgWrapper.appendChild(imgEl);
 
+    // Corpo do Card
     const body = document.createElement('div');
-    body.className = 'p-4';
-    body.style.cssText = 'display: flex; flex-direction: column; flex: 1;';
+    body.className = 'p-4 flex flex-col flex-1';
 
     const nome = document.createElement('h2');
     nome.className = 'text-lg font-semibold';
     nome.textContent = produto.nome;
 
     const descricao = document.createElement('p');
-    descricao.className = 'mt-2 text-sm text-slate-600';
-    descricao.style.flex = '1';
+    descricao.className = 'mt-2 text-sm text-slate-600 flex-1';
     descricao.textContent = produto.descricao;
 
-    // --- LÓGICA DE PREÇO (NORMAL OU PROMOCIONAL) ---
+    // Área de Preço
     const priceArea = document.createElement('div');
     priceArea.className = 'mt-4 flex items-center gap-2 flex-wrap';
-
+    
     if (produto.promocao) {
-        // Preço atual usa a cor de texto padrão do tema (--color-text)
         const precoAtual = document.createElement('p');
         precoAtual.className = 'text-xl font-bold';
         precoAtual.style.color = 'var(--color-text)';
@@ -56,80 +203,70 @@ const criarCard = (produto) => {
         if (produto.preco_antigo) {
             const desconto = Math.round((1 - produto.preco / produto.preco_antigo) * 100);
             const badge = document.createElement('span');
-            badge.className = 'text-xs font-bold px-2 py-1 rounded';
-            badge.style.backgroundColor = '#dcfce7'; // verde claro (fundo)
-            badge.style.color = '#15803d'; // verde escuro (texto)
+            badge.className = 'text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-800';
             badge.textContent = `-${desconto}%`;
 
             const precoAntigoEl = document.createElement('span');
-            precoAntigoEl.className = 'text-sm line-through';
-            precoAntigoEl.style.color = '#ef4444'; // vermelho
+            precoAntigoEl.className = 'text-sm line-through text-red-500';
             precoAntigoEl.textContent = formatarMoeda(produto.preco_antigo);
 
             priceArea.appendChild(badge);
             priceArea.appendChild(precoAntigoEl);
         } else {
-            // Caso seja marcado como promoção, mas sem preço antigo definido
             const badge = document.createElement('span');
-            badge.className = 'text-xs font-bold px-2 py-1 rounded';
-            badge.style.backgroundColor = '#dcfce7'; // verde claro (fundo)
-            badge.style.color = '#15803d'; // verde escuro (texto)
+            badge.className = 'text-xs font-bold px-2 py-1 rounded bg-green-100 text-green-800';
             badge.textContent = `PROMOÇÃO`;
             priceArea.appendChild(badge);
         }
     } else {
-        // Preço Normal
         const precoAtual = document.createElement('p');
         precoAtual.className = 'text-xl font-bold';
         precoAtual.style.color = 'var(--color-text)';
         precoAtual.textContent = formatarMoeda(produto.preco);
         priceArea.appendChild(precoAtual);
     }
-    // --- FIM DA LÓGICA DE PREÇO ---
 
+    // Botões de Ação Dinâmicos
     const btnArea = document.createElement('div');
     btnArea.className = 'mt-4 flex gap-2';
 
-    const btnEditar = document.createElement('button');
-    btnEditar.className = 'painelU';
-    btnEditar.textContent = 'Editar';
-    btnEditar.style.display = 'none';
-    btnEditar.onclick = () => abrirModalEdicao(produto);
+    const isAdmin = currentUser && (currentUser.nivel === 0 || currentUser.nivel === 1);
 
-    const btnExcluir = document.createElement('button');
-    btnExcluir.className = 'painelD';
-    btnExcluir.textContent = 'Excluir';
-    btnExcluir.style.display = 'none';
-    btnExcluir.onclick = async () => {
-        if (!confirm(`Excluir "${produto.nome}"?`)) return;
-        try {
-            const token = localStorage.getItem('token_supabase');
-            const response = await fetch(`/api/produtos/${produto.id}`, {
-                method: 'DELETE',
-                headers: { 'Authorization': `Bearer ${token}` },
-            });
-            if (!response.ok) {
-                throw new Error(`Erro HTTP: ${response.status}`);
+    if (isAdmin) {
+        const btnEditar = document.createElement('button');
+        btnEditar.className = 'painelU bg-yellow-500 hover:bg-yellow-600 text-white py-1 px-3 rounded text-sm';
+        btnEditar.textContent = 'Editar';
+        btnEditar.onclick = () => abrirModalEdicao(produto);
+
+        const btnExcluir = document.createElement('button');
+        btnExcluir.className = 'painelD bg-red-500 hover:bg-red-600 text-white py-1 px-3 rounded text-sm';
+        btnExcluir.textContent = 'Excluir';
+        btnExcluir.onclick = async () => {
+            if (!confirm(`Excluir "${produto.nome}"?`)) return;
+            try {
+                const response = await fetch(`/api/produtos/${produto.id}`, { method: 'DELETE' });
+                if (!response.ok) throw new Error(`Erro HTTP: ${response.status}`);
+                carregarCatalogo();
+            } catch (error) {
+                statusEl.textContent = 'Erro ao excluir produto.';
             }
-            carregarCatalogo();
-        } catch (error) {
-            statusEl.textContent = 'Erro ao excluir produto.';
-        }
-    };
+        };
+
+        btnArea.appendChild(btnEditar);
+        btnArea.appendChild(btnExcluir);
+    }
 
     const btnConsultar = document.createElement('button');
-    btnConsultar.className = 'publicS';
+    btnConsultar.className = 'publicS bg-blue-500 hover:bg-blue-600 text-white py-1 px-3 rounded text-sm';
     btnConsultar.textContent = 'Consultar';
-    btnConsultar.style.display = 'block';
     btnConsultar.onclick = () => abrirModalConsulta(produto);
-
-    btnArea.appendChild(btnEditar);
-    btnArea.appendChild(btnExcluir);
+    
     btnArea.appendChild(btnConsultar);
 
+    // Montagem final do card
     body.appendChild(nome);
     body.appendChild(descricao);
-    body.appendChild(priceArea); // Adiciona a área de preços
+    body.appendChild(priceArea);
     body.appendChild(btnArea);
 
     card.appendChild(imgWrapper);
@@ -138,17 +275,17 @@ const criarCard = (produto) => {
     return card;
 };
 
-// --- LÓGICA DE PAGINAÇÃO ---
-
-// Garante que exista um container para os controles de paginação logo após o catálogo
+// ==========================================
+// 5. PAGINAÇÃO
+// ==========================================
 const obterContainerPaginacao = () => {
     let paginacaoEl = document.getElementById('paginacao');
     if (!paginacaoEl) {
         paginacaoEl = document.createElement('div');
         paginacaoEl.id = 'paginacao';
         paginacaoEl.className = 'flex items-center justify-center gap-2 flex-wrap';
-        paginacaoEl.style.marginTop = '3rem'; // aplicado via style para não depender do build/purge do Tailwind
-        catalogoEl.insertAdjacentElement('afterend', paginacaoEl);
+        paginacaoEl.style.marginTop = '3rem';
+        if(catalogoEl) catalogoEl.insertAdjacentElement('afterend', paginacaoEl);
     }
     return paginacaoEl;
 };
@@ -159,30 +296,18 @@ const criarBotaoPagina = (label, { ativo = false, desabilitado = false, onClick 
     btn.disabled = desabilitado;
     btn.className = ativo
         ? 'px-3 py-1.5 rounded-full text-sm font-semibold bg-white text-slate-900 border border-white'
-        : 'px-3 py-1.5 rounded-full text-sm font-medium border border-slate-500 bg-transparent text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-transparent';
-    // Obs: a distância em relação aos cards fica no container (#paginacao), não em cada botão —
-    // colocar margem em cada botão individual não afasta a linha inteira dos cards, só desalinha os botões entre si.
-    if (onClick && !desabilitado) {
-        btn.onclick = onClick;
-    }
+        : 'px-3 py-1.5 rounded-full text-sm font-medium border border-slate-500 bg-transparent text-slate-200 hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed';
+    if (onClick && !desabilitado) btn.onclick = onClick;
     return btn;
 };
 
 const renderizarControlesPaginacao = (totalPaginas) => {
     const paginacaoEl = obterContainerPaginacao();
     paginacaoEl.innerHTML = '';
+    if (totalPaginas <= 1) return;
 
-    if (totalPaginas <= 1) return; // Não mostra controles se só há uma página
+    paginacaoEl.appendChild(criarBotaoPagina('Anterior', { desabilitado: paginaAtual === 1, onClick: () => irParaPagina(paginaAtual - 1) }));
 
-    // Botão "Anterior"
-    paginacaoEl.appendChild(
-        criarBotaoPagina('Anterior', {
-            desabilitado: paginaAtual === 1,
-            onClick: () => irParaPagina(paginaAtual - 1),
-        })
-    );
-
-    // Botões numerados (com reticências para muitas páginas)
     const paginasParaMostrar = obterPaginasVisiveis(paginaAtual, totalPaginas);
     paginasParaMostrar.forEach((item) => {
         if (item === '...') {
@@ -191,25 +316,13 @@ const renderizarControlesPaginacao = (totalPaginas) => {
             span.className = 'px-2 text-slate-400 select-none';
             paginacaoEl.appendChild(span);
         } else {
-            paginacaoEl.appendChild(
-                criarBotaoPagina(String(item), {
-                    ativo: item === paginaAtual,
-                    onClick: () => irParaPagina(item),
-                })
-            );
+            paginacaoEl.appendChild(criarBotaoPagina(String(item), { ativo: item === paginaAtual, onClick: () => irParaPagina(item) }));
         }
     });
 
-    // Botão "Próxima"
-    paginacaoEl.appendChild(
-        criarBotaoPagina('Próxima', {
-            desabilitado: paginaAtual === totalPaginas,
-            onClick: () => irParaPagina(paginaAtual + 1),
-        })
-    );
+    paginacaoEl.appendChild(criarBotaoPagina('Próxima', { desabilitado: paginaAtual === totalPaginas, onClick: () => irParaPagina(paginaAtual + 1) }));
 };
 
-// Monta a lista de páginas visíveis, ex: [1, '...', 4, 5, 6, '...', 12]
 const obterPaginasVisiveis = (atual, total, delta = 1) => {
     const paginas = [];
     const inicio = Math.max(2, atual - delta);
@@ -232,144 +345,49 @@ const renderizarPagina = (pagina) => {
     const fim = inicio + ITENS_POR_PAGINA;
     const produtosDaPagina = todosOsProdutos.slice(inicio, fim);
 
-    catalogoEl.innerHTML = '';
-    produtosDaPagina.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
+    if(catalogoEl) {
+        catalogoEl.innerHTML = '';
+        produtosDaPagina.forEach((produto) => catalogoEl.appendChild(criarCard(produto)));
+    }
 
     renderizarControlesPaginacao(totalPaginas);
-    updateUI();
 };
 
 const irParaPagina = (pagina) => {
     renderizarPagina(pagina);
-    // Rola suavemente até o topo do catálogo ao trocar de página
     catalogoEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
 
-// --- FIM DA LÓGICA DE PAGINAÇÃO ---
-
-export async function carregarCatalogo() {
-    try {
-        const token = localStorage.getItem('token_supabase');
-
-        const resposta = await fetch('/api/produtos/listagem', {
-            headers: token ? { 'Authorization': `Bearer ${token}` } : {}
-        });
-
-        if (!resposta.ok) throw new Error(`Falha ao carregar produtos. Status: ${resposta.status}`);
-
-        const { produtos, podeAtualizarUI } = await resposta.json();
-        if (!Array.isArray(produtos) || produtos.length === 0) {
-            todosOsProdutos = [];
-            catalogoEl.innerHTML = '';
-            obterContainerPaginacao().innerHTML = '';
-            statusEl.textContent = 'Nenhum produto encontrado.';
-            return;
-        }
-
-        todosOsProdutos = produtos;
-        renderizarPagina(1); // Sempre volta para a primeira página ao recarregar
-        statusEl.textContent = 'Produtos carregados.';
-
-    } catch (erro) {
-        console.error('ERRO GRAVE no carregarCatalogo:', erro);
-        statusEl.textContent = 'Não foi possível carregar o catálogo agora.';
-    }
-}
-
-carregarCatalogo();
-
-const updateUI = () => {
-    const token = localStorage.getItem('token_supabase');
-    const botaoC = document.getElementById('addButton');
-    const paineisU = document.querySelectorAll('.painelU');
-    const paineisD = document.querySelectorAll('.painelD');
-    const loginButton = document.getElementById('loginButton');
-
-    // 1. Esconde tudo por padrão
-    if (botaoC) botaoC.style.display = 'none';
-    paineisU.forEach(b => b.style.display = 'none');
-    paineisD.forEach(b => b.style.display = 'none');
-
-    // 2. Se não existe token válido, reseta o botão e para por aqui
-    if (!token || token === 'null' || token === 'undefined') {
-        if (loginButton) loginButton.textContent = 'Login';
-        return;
-    }
-
-    const payload = parseJwt(token);
-    const tempoAtual = Math.floor(Date.now() / 1000);
-
-    // 3. Se o token expirou ou é inválido, limpa do navegador
-    if (!payload || !payload.exp || payload.exp <= tempoAtual) {
-        localStorage.removeItem('token_supabase');
-        if (loginButton) loginButton.textContent = 'Login';
-        return;
-    }
-
-    if (payload.user_data?.nome) {
-        if (loginButton) loginButton.textContent = `Olá, ${payload.user_data.nome}`;
-    }
-
-    // 4. Checagem blindada do nível (Evita que valores vazios sejam convertidos em 0)
-    const nivel = payload.user_data?.nivel;
-    if (nivel !== undefined && nivel !== null && (Number(nivel) === 0 || Number(nivel) === 1)) {
-        if (botaoC) botaoC.style.display = 'inline-block';
-        paineisU.forEach(b => b.style.display = 'inline-block');
-        paineisD.forEach(b => b.style.display = 'inline-block');
-    }
-};
-
-document.getElementById('loginForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const loginButton = document.getElementById('loginButton');
-    const formData = new FormData(e.target);
-    const data = {
-        email: formData.get('email'),
-        senha: formData.get('senha'),
-    };
-
-    try {
-        const response = await fetch('/api/auth/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(data),
-        });
-        const result = await response.json();
-
-        if (!result.success || response.status === 401) {
-            alert("Usuário ou senha inválidos. Tente novamente.");
-            fecharELimparForm('loginModal', 'loginForm');
-            return;
-        }
-
-        // Login bem-sucedido
-        localStorage.setItem('token_supabase', result.accessToken);
-        loginButton.textContent = `Olá, ${result.user.nome}`;
-        fecharELimparForm('loginModal', 'loginForm');
-
-        statusEl.textContent = `Login bem-sucedido!`;
-        statusEl.style.color = "green";
-
-        updateUI();
-        e.target.reset();
-
-    } catch (error) {
-        console.error('Erro:', error);
-        statusEl.textContent = 'Falha de conexão ao tentar login.';
-        statusEl.style.color = "red";
-    }
-});
-
+// ==========================================
+// 6. MANIPULAÇÃO DE MODAIS E EVENTOS
+// ==========================================
 function fecharELimparForm(modalId, formId) {
-    document.getElementById(modalId).classList.add('hidden');
-    document.getElementById(formId).reset();
+    const modal = document.getElementById(modalId);
+    const form = document.getElementById(formId);
+    if(modal) modal.classList.add('hidden');
+    if(form) form.reset();
 }
 window.fecharELimparForm = fecharELimparForm;
 
-document.getElementById('imageInput').addEventListener('change', function (e) {
+function fecharELimparFormFotos(modalId, formId) {
+    fecharELimparForm(modalId, formId);
+    const previewContainer = document.getElementById('previewContainer');
+    if (previewContainer) previewContainer.innerHTML = '';
+}
+window.fecharELimparFormFotos = fecharELimparFormFotos;
+
+window.abrirModalCadastro = function() {
+    fecharELimparForm('loginModal', 'loginForm');
+    document.getElementById('cadastroModal').classList.remove('hidden');
+}
+
+window.abrirEsqueciSenha = function() {
+    alert("Função de recuperação de senha será implementada em breve.");
+}
+
+document.getElementById('imageInput')?.addEventListener('change', function (e) {
     const container = document.getElementById('previewContainer');
     container.innerHTML = '';
-
     Array.from(e.target.files).forEach(file => {
         const reader = new FileReader();
         reader.onload = (event) => {
@@ -382,24 +400,17 @@ document.getElementById('imageInput').addEventListener('change', function (e) {
     });
 });
 
-document.getElementById('addForm').addEventListener('submit', async (e) => {
+document.getElementById('addForm')?.addEventListener('submit', async (e) => {
     e.preventDefault();
     try {
-        const token = localStorage.getItem('token_supabase');
         const response = await fetch('/api/produtos/criar', {
             method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`
-            },
             body: new FormData(e.target),
         });
         if (response.ok) {
             alert('Produto adicionado com sucesso!');
-            document.getElementById('addModal').classList.add('hidden');
-            e.target.reset();
-            document.getElementById('previewContainer').innerHTML = '';
+            fecharELimparFormFotos('addModal', 'addForm');
             await carregarCatalogo();
-            updateUI();
         } else {
             alert('Erro ao salvar produto.');
         }
@@ -408,51 +419,17 @@ document.getElementById('addForm').addEventListener('submit', async (e) => {
     }
 });
 
-function fecharELimparFormFotos(modalId, formId) {
-    const modal = document.getElementById(modalId);
-    const form = document.getElementById(formId);
-    modal.classList.add('hidden');
-    form.reset();
-    const previewContainer = document.getElementById('previewContainer');
-    if (previewContainer) previewContainer.innerHTML = '';
-}
-window.fecharELimparFormFotos = fecharELimparFormFotos;
-
-function parseJwt(token) {
-    try {
-        const base64Url = token.split('.')[1];
-        // Ajusta os caracteres do Base64Url para Base64 padrão
-        const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-        // Decodifica lidando com caracteres especiais (UTF-8)
-        const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''));
-
-        return JSON.parse(jsonPayload);
-    } catch (error) {
-        console.error("Erro ao ler o token:", error);
-        return null;
-    }
-}
-
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
     const checkbox = document.getElementById("checkPromocional");
     const field = document.getElementById("promocionalField");
 
-    checkbox.addEventListener("change", () => {
-        if (checkbox.checked) {
-            field.classList.remove("hidden");
-        } else {
-            field.classList.add("hidden");
-        }
-    });
+    if (checkbox && field) {
+        checkbox.addEventListener("change", () => {
+            field.classList.toggle("hidden", !checkbox.checked);
+        });
+    }
+
+    // Fluxo de Inicialização
+    await verificarSessao();
+    await carregarCatalogo();
 });
-
-function abrirModalCadastro() {
-    fecharELimparForm('loginModal', 'loginForm');
-    document.getElementById('cadastroModal').classList.remove('hidden');
-}
-
-function abrirEsqueciSenha() {
-    alert("Função de recuperação de senha será implementada em breve.");
-}

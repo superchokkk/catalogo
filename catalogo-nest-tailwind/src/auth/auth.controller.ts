@@ -1,4 +1,6 @@
-import { BadRequestException, Body, Controller, Post } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, Res, Get, Req, UseGuards } from '@nestjs/common';
+import type { Response, Request } from 'express';
+import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
 import { CreateUserDto } from '../users/user.dto';
@@ -13,9 +15,33 @@ export class AuthController {
   async login(
     @Body('email') email: string,
     @Body('senha') senha: string,
+    @Res({ passthrough: true }) res: Response
   ) {
     const resultado = await this.authService.login(email, senha);
+    if (resultado.success) {
+      res.cookie('access_token', resultado.accessToken, {
+        httpOnly: true, //contra XXS
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'lax', //contra CSRF
+        maxAge: 1000 * 60 * 60 * 24 * 7,
+      });
+      delete resultado.accessToken;
+    }
+
     return resultado;
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) res: Response) {
+    res.clearCookie('access_token');
+    return { success: true, message: 'Logout realizado com sucesso' };
+  }
+
+  @Get('me')
+  @UseGuards(SupabaseAuthGuard)
+  async getMe(@Req() req: Request) {
+    //id, email, nivel pro front montar a interface
+    return req['user'];
   }
 
   @Post('cadastro')

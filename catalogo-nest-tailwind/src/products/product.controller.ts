@@ -3,6 +3,7 @@ import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, B
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { AdminGuard } from 'src/auth/admin.guard';
 
 @Controller('produtos')
 export class ProductController {
@@ -16,14 +17,14 @@ export class ProductController {
                 produtos,
                 podeAtualizarUI: true, // or derive this from business logic
             };
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no Controller:', error.message);
             throw new InternalServerErrorException('Erro interno ao buscar catálogo.');
         }
     }
 
     @Post('criar')
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, AdminGuard)
     @UseInterceptors(FilesInterceptor('imagens', 10, {
         limits: {
             fileSize: 5 * 1024 * 1024
@@ -38,14 +39,14 @@ export class ProductController {
             const userId = req.user.id;
             // Passamos os dados E os arquivos para o Service
             return await this.productService.createProductWithImages(productData, files, userId);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no Controller:', error.message);
             throw new InternalServerErrorException('Erro interno ao criar produto.');
         }
     }
 
     @Put(':id')
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, AdminGuard)
     @UseInterceptors(FilesInterceptor('imagens', 10))
     async updateProduct(
         @Param('id') id: string,
@@ -67,18 +68,18 @@ export class ProductController {
                 imagensExistentes,
                 userId
             );
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no Update Controller:', error.message);
             throw new InternalServerErrorException('Erro ao atualizar produto.');
         }
     }
 
     @Delete(':id')
-    @UseGuards(SupabaseAuthGuard)
+    @UseGuards(SupabaseAuthGuard, AdminGuard)
     async deleteProduct(@Param('id') id: string) {
         try {
             return await this.productService.deleteProduct(id);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Erro no Delete Controller:', error.message);
             throw new InternalServerErrorException('Erro ao deletar produto.');
         }

@@ -7,9 +7,8 @@ export class UserService {
 
   async createUser(userData: any) {
     const { data, error } = await this.supabaseService.client
-      .from('usuarios')
+      .from('users')
       .insert([userData]);
-
     if (error) throw error;
 
     return data;

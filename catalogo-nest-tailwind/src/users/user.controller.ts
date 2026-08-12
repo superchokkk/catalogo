@@ -16,6 +16,9 @@ export class UserController {
     ) {
         try {
             const userId = req.user.id;
+            if (userData.nome) {
+                userData.nome = userData.nome.charAt(0).toUpperCase() + userData.nome.slice(1).toLowerCase();
+            }
             return await this.userService.createUser(userData);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
