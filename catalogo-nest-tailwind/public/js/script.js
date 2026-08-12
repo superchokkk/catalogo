@@ -7,7 +7,7 @@ const statusEl = document.getElementById('mensagemStatus') || document.createEle
 const catalogoEl = document.getElementById('catalogo');
 
 // --- ESTADO DA PAGINAÇÃO ---
-const ITENS_POR_PAGINA = 12;
+const ITENS_POR_PAGINA = 3;
 let todosOsProdutos = [];
 let paginaAtual = 1;
 
