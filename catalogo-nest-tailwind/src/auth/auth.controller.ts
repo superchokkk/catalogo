@@ -56,4 +56,24 @@ export class AuthController {
       throw new BadRequestException(error.message || 'Erro ao criar conta.');
     }
   }
+
+  @Post('esqueci-senha')
+  async esqueciSenha(@Body('email') email: string) {
+    if (!email) {
+      throw new BadRequestException('E-mail é obrigatório.');
+    }
+    return await this.authService.enviarEmailRecuperacao(email);
+  }
+
+  @Post('redefinir-senha')
+  async redefinirSenha(
+    @Body('email') email: string,
+    @Body('token') token: string, // Código numérico ou token enviado pelo Supabase
+    @Body('novaSenha') novaSenha: string,
+  ) {
+    if (!email || !token || !novaSenha) {
+      throw new BadRequestException('Dados incompletos para redefinição.');
+    }
+    return await this.authService.atualizarSenhaComToken(email, token, novaSenha);
+  }
 }

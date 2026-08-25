@@ -55,7 +55,8 @@
                         <div class="flex justify-between items-center pt-2">
                             <p class="text-sm text-text opacity-80">
                                 Não tem conta?
-                                <a href="#" onclick="fecharELimparForm('loginModal', 'loginForm'); document.getElementById('cadastroModal').classList.remove('hidden')"
+                                <a href="#"
+                                    onclick="fecharELimparForm('loginModal', 'loginForm'); document.getElementById('cadastroModal').classList.remove('hidden')"
                                     class="text-primary font-semibold hover:underline">Cadastre-se</a>
                             </p>
                             <div class="flex space-x-2">
@@ -110,7 +111,8 @@
                         <div class="flex justify-between items-center pt-2">
                             <p class="text-sm text-text opacity-80">
                                 Já tem conta?
-                                <a href="#" onclick="fecharELimparForm('cadastroModal', 'cadastroForm'); document.getElementById('loginModal').classList.remove('hidden')"
+                                <a href="#"
+                                    onclick="fecharELimparForm('cadastroModal', 'cadastroForm'); document.getElementById('loginModal').classList.remove('hidden')"
                                     class="text-primary font-semibold hover:underline">Entrar</a>
                             </p>
 
@@ -125,6 +127,52 @@
                                     Cadastrar
                                 </button>
                             </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Modal de Recuperação de Senha -->
+            <div id="recuperarModal"
+                class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                <div class="bg-surface rounded-lg shadow-lg w-96 p-6">
+                    <h2 class="text-xl font-bold mb-4 text-text">Recuperar Senha</h2>
+
+                    <!-- Passo A: Pedir E-mail -->
+                    <form id="formSolicitarEmail" class="space-y-4">
+                        <p class="text-sm text-text opacity-80">Informe seu e-mail para receber o código de recuperação.
+                        </p>
+                        <div>
+                            <input type="email" name="email" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 outline-none"
+                                placeholder="seu@email.com" />
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button type="button" class="px-4 py-2 rounded-md bg-gray-300 text-black"
+                                onclick="document.getElementById('recuperarModal').classList.add('hidden')">Cancelar</button>
+                            <button type="submit" class="px-4 py-2 rounded-md bg-primary text-white">Enviar
+                                Código</button>
+                        </div>
+                    </form>
+
+                    <!-- Passo B: Inserir Código e Nova Senha (Oculto inicialmente) -->
+                    <form id="formRedefinirSenha" class="space-y-4 hidden">
+                        <p class="text-sm text-text opacity-80">Digite o código que chegou no seu e-mail e sua nova
+                            senha.</p>
+                        <input type="hidden" name="emailRecuperacao" id="emailRecuperacaoInput">
+                        <div>
+                            <input type="text" name="token" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 outline-none"
+                                placeholder="Código de 6 dígitos" />
+                        </div>
+                        <div>
+                            <input type="password" name="novaSenha" required
+                                class="mt-1 block w-full rounded-md border border-gray-400 bg-background text-text px-3 py-2 outline-none"
+                                placeholder="Nova senha" />
+                        </div>
+                        <div class="flex justify-end space-x-2">
+                            <button type="submit" class="px-4 py-2 rounded-md bg-primary text-white">Alterar
+                                Senha</button>
                         </div>
                     </form>
                 </div>

@@ -39,7 +39,6 @@ async function realizarLogout() {
     try {
         await fetch('/api/auth/logout', { method: 'POST' });
         currentUser = null;
-        alert('Você foi deslogado com sucesso!');
         window.location.reload(); 
     } catch (erro) {
         console.error('Erro ao tentar deslogar:', erro);
@@ -379,10 +378,6 @@ window.fecharELimparFormFotos = fecharELimparFormFotos;
 window.abrirModalCadastro = function() {
     fecharELimparForm('loginModal', 'loginForm');
     document.getElementById('cadastroModal').classList.remove('hidden');
-}
-
-window.abrirEsqueciSenha = function() {
-    alert("Função de recuperação de senha será implementada em breve.");
 }
 
 document.getElementById('imageInput')?.addEventListener('change', function (e) {
