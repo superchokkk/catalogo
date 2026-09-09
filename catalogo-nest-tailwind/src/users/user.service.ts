@@ -25,7 +25,7 @@ export class UserService {
     //criar no public.users
     const { data: publicData, error: publicError } = await this.supabaseService.client
       .from('users')
-      .insert([{
+      .upsert([{
         id: userId,
         email: email,
         nome: nome
