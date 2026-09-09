@@ -27,7 +27,7 @@ export class UserService {
     }
 
    const { data: dbData, error: dbError } = await this.supabaseService.client
-      .from('usuarios')
+      .from('users')
       .insert([
         {
           id: authData.user.id,

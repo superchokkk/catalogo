@@ -76,4 +76,17 @@ export class AuthController {
     }
     return await this.authService.atualizarSenhaComToken(email, token, novaSenha);
   }
+
+  @Post('set-session')
+  setSession(@Body('access_token') token: string, @Res({ passthrough: true }) res: Response) {
+    // Cria o cookie seguro
+    res.cookie('access_token', token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production', // true apenas se estiver usando HTTPS
+      sameSite: 'lax',
+      maxAge: 3600 * 1000, // 1 hora (tempo de vida do token do Supabase)
+    });
+
+    return { message: 'Sessão configurada com sucesso' };
+  }
 }

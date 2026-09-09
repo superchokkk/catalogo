@@ -9,14 +9,10 @@ export class SupabaseAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     
     // 1. Busca o token no Cookie PRIMEIRO. Se não achar, tenta no cabeçalho (útil para testes no Postman).
-    let token = request.cookies?.['access_token'];
-    
-    if (!token && request.headers.authorization) {
-      token = request.headers.authorization.replace('Bearer ', '');
-    }
+    const token = request.cookies?.['access_token'];
 
     if (!token) {
-      throw new UnauthorizedException('Sessão expirada ou não logado.');
+      throw new UnauthorizedException('Token não encontrado nos cookies.');
     }
 
     // 2. O Supabase verifica se o token é autêntico e válido
