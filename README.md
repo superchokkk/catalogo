@@ -1,23 +1,67 @@
-# Nome do Projeto
+# Catálogo API - NestJS & Supabase
 
-Uma descrição direta sobre o objetivo do sistema, o problema que ele resolve e a sua utilidade.
+Uma API back-end robusta desenvolvida com [NestJS](https://nestjs.com/) e integração profunda com o [Supabase](https://supabase.com/) para gerenciamento de banco de dados e autenticação de usuários.
 
-## 🚀 Tecnologias Utilizadas
+## Tecnologias Utilizadas
 
-* **Backend/Lógica:** NestJS, Python
-* **Frontend/Interface:** Tailwind CSS
-* **Banco de Dados/Infraestrutura:** Supabase, PostgreSQL
-* **Ferramentas Adicionais:** Unity, Scikit-learn, Selenium
+* **Framework:** NestJS (Node.js com TypeScript)
+* **Autenticação:** JWT (JSON Web Tokens) com Supabase Auth Guards
+* **BaaS / Banco de Dados:** Supabase
+* **Testes:** Jest (E2E e Unitários)
+* **Formatação/Linting:** ESLint e Prettier
 
-## ⚙️ Pré-requisitos
+## Estrutura do Projeto
 
-Antes de iniciar, certifique-se de ter as seguintes ferramentas instaladas:
-* [Node.js](https://nodejs.org/en/) (para pacotes npm)
-* [Python 3.x](https://www.python.org/) (se aplicável)
-* Git
+A arquitetura do projeto segue o padrão modular do NestJS, perfeitamente adequada para o desenvolvimento de APIs, organizada nos seguintes domínios principais:
 
-## 🛠️ Instalação e Execução
+* `src/auth/` - Módulo de autenticação contendo estratégias JWT, `SupabaseAuthGuard` e um `AdminGuard` para controle de rotas baseadas em permissões (RBAC).
+* `src/users/` - Módulo responsável pelo gerenciamento dos usuários e integração de dados de perfil.
+* `src/products/` - Módulo central para as regras de negócio e endpoints do catálogo de produtos (CRUD).
+* `src/supabase/` - Serviço de integração abstraindo a comunicação direta com a API do Supabase.
 
-1. Clone este repositório:
-   ```bash
-   git clone [https://github.com/seu-usuario/nome-do-projeto.git](https://github.com/seu-usuario/nome-do-projeto.git)
+## Instalação e Configuração
+
+**1. Clone o projeto e instale as dependências:**
+```bash
+npm install
+```
+
+**2. Variáveis de Ambiente:**
+Crie um arquivo `.env` na raiz do projeto. Com base na integração com o Supabase e JWT, você precisará das seguintes variáveis (ajuste conforme a configuração do seu ambiente):
+```env
+SUPABASE_URL=sua_url_do_supabase
+SUPABASE_KEY=sua_anon_key_do_supabase
+JWT_SECRET=sua_chave_secreta
+```
+
+## Executando a Aplicação
+
+```bash
+# Modo desenvolvimento padrão
+npm run start
+
+# Modo desenvolvimento com watch (Recomendado)
+npm run start:dev
+
+# Modo de produção
+npm run build
+npm run start:prod
+```
+
+## Testes
+
+O projeto já está configurado com o Jest para garantir a qualidade e estabilidade do código da API.
+
+```bash
+# Executar testes unitários
+npm run test
+
+# Executar testes End-to-End (E2E)
+npm run test:e2e
+```
+
+## Autenticação e Segurança
+
+A API é protegida usando Guards personalizados do NestJS, focados na segurança dos endpoints:
+* **SupabaseAuthGuard:** Garante que o usuário tem uma sessão e um token válido no Supabase antes de acessar o endpoint.
+* **AdminGuard:** Verifica as permissões de nível superior, restringindo rotas sensíveis (como deletar ou criar produtos no catálogo) apenas a administradores devidamente autorizados.
