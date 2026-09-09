@@ -1,25 +1,23 @@
 // controllers/productController.js
-import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Post, InternalServerErrorException, Body, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
-import { FilesInterceptor } from '@nestjs/platform-express';
-import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
+import { CreateUserDto } from './user.dto';
 
 @Controller('usuarios')
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
     @Post('criar')
-    @UseGuards(SupabaseAuthGuard)
     async createUser(
-        @Body() userData: any,
-        @Req() req: any
+        @Body() dto: CreateUserDto
     ) {
         try {
-            const userId = req.user.id;
-            if (userData.nome) {
-                userData.nome = userData.nome.charAt(0).toUpperCase() + userData.nome.slice(1).toLowerCase();
+            if (dto.senha !== dto.confirmarSenha) {
+                throw new BadRequestException('As senhas não coincidem.');
             }
-            return await this.userService.createUser(userData);
+            const nomeFormatado = dto.nome.charAt(0).toUpperCase() + dto.nome.slice(1).toLowerCase();
+
+            return await this.userService.createUser(dto.email, dto.senha, nomeFormatado);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error('Erro no Controller:', message);

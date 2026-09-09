@@ -44,19 +44,6 @@ export class AuthController {
     return req['user'];
   }
 
-  @Post('cadastro')
-  async registrarCliente(@Body() createUserDto: CreateUserDto) {
-    if (createUserDto.senha !== createUserDto.confirmarSenha) {
-      throw new BadRequestException('As senhas não coincidem.');
-    }
-    try {
-      return await this.userService.registrarNoBanco(createUserDto.nome, createUserDto.email, createUserDto.senha);
-    } catch (error: any) {
-      console.log('O MOTIVO DO ERRO 400 FOI:', error.response || error.message);
-      throw new BadRequestException(error.message || 'Erro ao criar conta.');
-    }
-  }
-
   @Post('esqueci-senha')
   async esqueciSenha(@Body('email') email: string) {
     if (!email) {
