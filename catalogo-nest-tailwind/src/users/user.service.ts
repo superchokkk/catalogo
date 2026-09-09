@@ -33,7 +33,7 @@ export class UserService {
           id: authData.user.id,
           nome: nome,
           email: email,
-          nivel: 0,
+          nivel: 99,
         },
       ])
       .select()
