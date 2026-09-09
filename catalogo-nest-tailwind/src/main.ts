@@ -15,7 +15,7 @@ async function bootstrap() {
 
   //CORS
   app.enableCors({
-    origin: ['http://localhost:5173', 'https://dgconcept-catalogo.vercel.app/'],
+    origin: ['http://localhost:5173', 'https://dgconcept-catalogo.vercel.app'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
