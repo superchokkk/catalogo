@@ -22,7 +22,7 @@ export class AuthController {
       res.cookie('access_token', resultado.accessToken, {
         httpOnly: true, //contra XXS
         secure: process.env.NODE_ENV === 'production',
-        sameSite: 'lax', //contra CSRF
+        sameSite: 'none',
         maxAge: 1000 * 60 * 60 * 24 * 7,
       });
       delete resultado.accessToken;
@@ -83,7 +83,7 @@ export class AuthController {
     res.cookie('access_token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production', // true apenas se estiver usando HTTPS
-      sameSite: 'lax',
+      sameSite: 'none',
       maxAge: 3600 * 1000, // 1 hora (tempo de vida do token do Supabase)
     });
 
