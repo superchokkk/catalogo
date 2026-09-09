@@ -16,8 +16,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(
     new ValidationPipe({
-      whitelist: true,
-      forbidNonWhitelisted: true
+      whitelist: true, // REJEITA/REMOVE automaticamente qualquer campo não definido no DTO (ex: nivel: 99)
     }),
   );
 

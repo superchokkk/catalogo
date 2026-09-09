@@ -21,6 +21,9 @@ export class UserController {
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
             console.error('Erro no Controller:', message);
+            if (error instanceof BadRequestException) {
+                throw error;
+            }
             throw new InternalServerErrorException('Erro interno ao criar usuário.');
         }
     }
