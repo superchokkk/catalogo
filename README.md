@@ -1,141 +1,71 @@
-# Catalogo Nest + Tailwind
+# 🛍️ Catálogo - NestJS & Tailwind & Supabase
 
-Projeto de catalogo de produtos com backend em NestJS e interface web servida como arquivos estaticos.
+Uma aplicação robusta desenvolvida com [NestJS](https://nestjs.com/) para o back-end, estilização de assets com [Tailwind CSS](https://tailwindcss.com/) e integração profunda com o [Supabase](https://supabase.com/) para gerenciamento de banco de dados e autenticação.
 
-## Visao geral
+## 🚀 Tecnologias Utilizadas
 
-Este projeto une:
+* **Framework:** NestJS (Node.js com TypeScript)
+* **Autenticação:** JWT (JSON Web Tokens) com Supabase Auth Guards
+* **BaaS / Banco de Dados:** Supabase
+* **Testes:** Jest (E2E e Unitários)
+* **Formatação/Linting:** ESLint e Prettier
 
-- API em `NestJS` (TypeScript)
-- Frontend em `HTML + JavaScript`
-- Estilizacao com `Tailwind CSS`
+## 📁 Estrutura do Projeto
 
-A aplicacao expoe o frontend em `/` e as rotas da API com prefixo global `/api`.
+A arquitetura do projeto segue o padrão modular do NestJS, organizada nos seguintes domínios principais:
 
-## Funcionalidades atuais
+* `src/auth/` - Módulo de autenticação contendo estratégias JWT, `SupabaseAuthGuard` e um `AdminGuard` para controle de rotas baseadas em permissões (RBAC).
+* `src/users/` - Módulo responsável pelo gerenciamento dos usuários e integração de dados de perfil.
+* `src/products/` - Módulo central para as regras de negócio e endpoints do catálogo de produtos (CRUD).
+* `src/supabase/` - Serviço de integração abstraindo a comunicação com a API do Supabase.
+* `src/styles/` & `public/css/` - Entrada e saída de compilação dos estilos utilizando o Tailwind CSS.
 
-- Listagem de produtos via API (`GET /api/products`)
-- Login simples via API (`POST /api/auth/login`)
-- Renderizacao de catalogo na pagina inicial
-- Controle basico de UI por permissao (`role`)
-  - `role: 1` exibe botoes de administracao na interface
-  - `role: 2` exibe apenas fluxo publico
+## 🛠️ Instalação e Configuração
 
-## Tecnologias
-
-- `Node.js`
-- `NestJS 11`
-- `TypeScript`
-- `Tailwind CSS 3`
-- `PostCSS`
-
-## Estrutura de pastas
-
-```text
-src/
-  app.controller.ts      # rota /api/products
-  app.service.ts         # dados mockados de produtos
-  auth.controller.ts     # rota /api/auth/login
-  auth.service.ts        # validacao simples de login
-  main.ts                # bootstrap Nest + assets estaticos + prefixo /api
-  styles/input.css       # entrada do Tailwind
-
-public/
-  index.html             # pagina principal
-  css/style.css          # CSS gerado pelo Tailwind
-  js/*.js                # scripts da interface
-  mycss/mystyle.css      # estilos complementares
-```
-
-## Como rodar localmente
-
-### 1. Instalar dependencias
-
+**1. Clone o projeto e instale as dependências:**
 ```bash
 npm install
 ```
 
-### 2. Rodar em desenvolvimento
+**2. Variáveis de Ambiente:**
+Crie um arquivo `.env` na raiz do projeto. Com base na integração com o Supabase e JWT, você precisará das seguintes variáveis (ajuste conforme a configuração do seu ambiente):
+```env
+SUPABASE_URL=sua_url_do_supabase
+SUPABASE_KEY=sua_anon_key_do_supabase
+JWT_SECRET=sua_chave_secreta
+```
+
+**3. Geração do CSS (Tailwind):**
+O projeto está configurado com `postcss` e `tailwind.config.js`. O CSS compilado é gerado na pasta `public/css/style.css`.
+
+## 🏃‍♂️ Executando a Aplicação
 
 ```bash
+# Modo desenvolvimento padrão
+npm run start
+
+# Modo desenvolvimento com watch (Recomendado)
 npm run start:dev
+
+# Modo de produção
+npm run build
+npm run start:prod
 ```
 
-Por causa do script `prestart:dev`, o CSS do Tailwind sera compilado antes da aplicacao iniciar.
+## 🧪 Testes
 
-### 3. Abrir no navegador
+O projeto já está configurado com o Jest para garantir a qualidade do código.
 
-- Frontend: `http://localhost:3000/`
-- API: `http://localhost:3000/api`
+```bash
+# Executar testes unitários
+npm run test
 
-## Scripts disponiveis
-
-- `npm run start`: inicia a aplicacao
-- `npm run start:dev`: inicia com watch
-- `npm run start:prod`: executa build em `dist/`
-- `npm run build`: build do Nest
-- `npm run build:css`: gera `public/css/style.css`
-- `npm run build:css:watch`: recompila CSS em modo watch
-- `npm run test`: testes unitarios
-- `npm run test:e2e`: testes end-to-end
-- `npm run test:cov`: cobertura de testes
-- `npm run lint`: lint com ESLint
-
-## Endpoints da API
-
-### `GET /api/products`
-
-Retorna uma lista de produtos mockados.
-
-Exemplo de resposta:
-
-```json
-[
-  {
-    "id": 1,
-    "nome": "Tenis Urban Pro",
-    "descricao": "Tenis casual com acabamento premium para uso diario.",
-    "preco": 299.9,
-    "oldPrice": 399.9,
-    "imagem": "https://..."
-  }
-]
+# Executar testes End-to-End (E2E)
+npm run test:e2e
 ```
 
-### `POST /api/auth/login`
+## 🔐 Autenticação e Segurança
 
-Recebe `nome`, `email` e `senha` no corpo da requisicao.
-
-Exemplo de body:
-
-```json
-{
-  "nome": "Pedro",
-  "email": "samuel@gmail.com",
-  "senha": "senha"
-}
-```
-
-Regras atuais:
-
-- Campos obrigatorios: `nome`, `email`, `senha`
-- Email deve conter `@`
-- Se `email = samuel@gmail.com` e `senha = senha`, retorna `role: 1`
-- Qualquer outro login valido retorna `role: 2`
-
-## Observacoes importantes
-
-- Os produtos sao mockados em memoria (`AppService`), sem banco de dados.
-- O login e apenas demonstrativo, sem criptografia e sem JWT.
-- A interface frontend ja chama rotas de criacao/edicao/exclusao de produtos, mas essas rotas ainda nao existem no backend atual.
-
-## Melhorias sugeridas
-
-1. Implementar CRUD completo de produtos no backend (`POST`, `PUT`, `DELETE`).
-2. Adicionar persistencia com banco de dados.
-3. Criar autenticacao real com hash de senha e JWT.
-4. Adicionar validacao com DTO + `class-validator`.
-
-## Licenca
-
-Projeto para fins de estudo/desenvolvimento. Ajuste a licenca conforme sua necessidade.
+A API é protegida usando Guards personalizados do NestJS:
+* **SupabaseAuthGuard:** Garante que o usuário tem uma sessão válida no Supabase antes de acessar o endpoint.
+* **AdminGuard:** Verifica as permissões de nível superior, restringindo rotas sensíveis (como deletar ou criar produtos no catálogo) apenas a administradores.

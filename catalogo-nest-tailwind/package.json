@@ -7,11 +7,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "build": "nest build",
-    "build:css": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css --minify",
-    "build:css:watch": "tailwindcss -i ./src/styles/input.css -o ./public/css/style.css --watch",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "prestart": "npm run build:css",
-    "prestart:dev": "npm run build:css",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:debug": "nest start --debug --watch",
