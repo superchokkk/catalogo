@@ -8,7 +8,7 @@ export class UserService {
   async createUser(userData: any) {
     const { data, error } = await this.supabaseService.client
       .from('users')
-      .insert([userData]);
+      .upsert([userData]);
     if (error) throw error;
 
     return data;
@@ -28,7 +28,7 @@ export class UserService {
 
    const { data: dbData, error: dbError } = await this.supabaseService.client
       .from('users')
-      .insert([
+      .upsert([
         {
           id: authData.user.id,
           nome: nome,
