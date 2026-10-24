@@ -5,6 +5,7 @@ import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
 import { CreateUserDto } from '../users/user.dto';
 import { Throttle } from '@nestjs/throttler';
+import { RedefinirSenhaDto } from './redefinir-senha.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -57,15 +58,8 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('redefinir-senha')
-  async redefinirSenha(
-    @Body('email') email: string,
-    @Body('token') token: string, // Código numérico ou token enviado pelo Supabase
-    @Body('novaSenha') novaSenha: string,
-  ) {
-    if (!email || !token || !novaSenha) {
-      throw new BadRequestException('Dados incompletos para redefinição.');
-    }
-    return await this.authService.atualizarSenhaComToken(email, token, novaSenha);
+  async redefinirSenha(@Body() dto: RedefinirSenhaDto) {
+    return await this.authService.atualizarSenhaComToken(dto.email, dto.token, dto.novaSenha);
   }
 
   @Throttle({ default: { limit: 10, ttl: 60000 } })

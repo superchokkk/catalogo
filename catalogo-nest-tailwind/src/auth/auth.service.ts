@@ -14,8 +14,10 @@ export class AuthService {
     }
 
     try {
-      // 1. Faz o login no Supabase
-      const { data, error } = await this.supabaseService.client.auth.signInWithPassword({
+      // 1. Faz o login no Supabase, em um client descartável: a sessão do usuário não
+      // pode ficar guardada no client administrativo compartilhado.
+      const auth = this.supabaseService.criarClienteAuth();
+      const { data, error } = await auth.auth.signInWithPassword({
         email: emailLimpo,
         password: senhaLimpa,
       });
@@ -64,8 +66,12 @@ export class AuthService {
   }
 
   async atualizarSenhaComToken(email: string, token: string, novaSenha: string) {
+    // Client exclusivo desta requisição: a sessão criada pelo verifyOtp fica só nele
+    // e é descartada ao final, sem tocar no client administrativo compartilhado.
+    const auth = this.supabaseService.criarClienteAuth();
+
     // 1. Valida o OTP (One-Time Password / Código enviado por email)
-    const { data, error: verifyError } = await this.supabaseService.client.auth.verifyOtp({
+    const { data, error: verifyError } = await auth.auth.verifyOtp({
       email,
       token,
       type: 'recovery',
@@ -75,12 +81,21 @@ export class AuthService {
       throw new BadRequestException('Código inválido ou expirado.');
     }
 
-    // 2. Com a sessão temporária ativa, atualiza a senha do usuário
-    const { error: updateError } = await this.supabaseService.client.auth.updateUser({
+    // 2. Com a sessão temporária ativa (neste mesmo client), atualiza a senha do usuário
+    const { error: updateError } = await auth.auth.updateUser({
       password: novaSenha,
     });
 
     if (updateError) {
+      // O usuário já provou ser o dono da conta (OTP válido), então estes dois erros
+      // podem ser explicados a ele sem risco de enumeração.
+      if (updateError.code === 'same_password') {
+        throw new BadRequestException('A nova senha deve ser diferente da atual.');
+      }
+      if (updateError.code === 'weak_password') {
+        throw new BadRequestException('A senha informada é muito fraca.');
+      }
+      console.error('Erro ao atualizar a senha:', updateError.message);
       throw new InternalServerErrorException('Não foi possível atualizar a senha.');
     }
 

@@ -6,8 +6,10 @@ export class UserService {
   constructor(private supabaseService: SupabaseService) { }
 
   async createUser(email: string, senha: string, nome: string) {
-    //criar no auth.users
-    const { data: authData, error: authError } = await this.supabaseService.client.auth.signUp({
+    //criar no auth.users (client descartável: o signUp pode devolver uma sessão, e ela
+    //não pode ficar guardada no client administrativo compartilhado)
+    const auth = this.supabaseService.criarClienteAuth();
+    const { data: authData, error: authError } = await auth.auth.signUp({
       email: email,
       password: senha,
     });
@@ -22,7 +24,7 @@ export class UserService {
 
     const userId = authData.user.id;
 
-    //criar no public.users
+    //criar no public.users (client administrativo, com a service_role)
     const { data: publicData, error: publicError } = await this.supabaseService.client
       .from('users')
       .insert([{

@@ -25,7 +25,6 @@ import { SupabaseModule } from './supabase/supabase.module';
   ],
   controllers: [AppController, AuthController, ProductController],
   providers: [AppService, AuthService, SupabaseService, JwtStrategy, ProductService,
-    // Sem este guard o @Throttle é ignorado: quem aplica o limite é o ThrottlerGuard.
     { provide: APP_GUARD, useClass: ThrottlerGuard },
   ],
 })
