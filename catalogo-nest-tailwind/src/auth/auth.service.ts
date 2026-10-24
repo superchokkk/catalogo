@@ -51,39 +51,24 @@ export class AuthService {
   }
 
   async enviarEmailRecuperacao(email: string) {
-    // O Supabase gera o link/código de recuperação e dispara o email automaticamente
-    const { error } = await this.supabaseService.client.auth.resetPasswordForEmail(email, {
-      redirectTo: 'http://localhost:3000', // URL para onde o usuário voltará se usar link (opcional se usar código)
+    const { data, error } = await this.supabaseService.client.auth.resetPasswordForEmail(email, {
+      redirectTo: 'http://localhost:5173/update-password' // rota do frontend
     });
 
     if (error) {
-      throw new BadRequestException(`Erro ao enviar email de recuperação: ${error.message}`);
+      throw new BadRequestException(error.message);
     }
-
-    return { success: true, message: 'E-mail de recuperação enviado com sucesso!' };
+    return { success: true, message: 'Email de recuperação enviado com sucesso.' };
   }
 
-  async atualizarSenhaComToken(email: string, token: string, novaSenha: string) {
-    // 1. Valida o OTP (One-Time Password / Código enviado por email)
-    const { data, error: verifyError } = await this.supabaseService.client.auth.verifyOtp({
-      email,
-      token,
-      type: 'recovery',
-    });
+  async atualizarSenha(novaSenha: string) {
+    const { data, error } = await this.supabaseService.client.auth.updateUser(
+      { password: novaSenha }
+    );
 
-    if (verifyError || !data.session) {
-      throw new BadRequestException('Código inválido ou expirado.');
+    if (error) {
+      throw new BadRequestException(error.message);
     }
-
-    // 2. Com a sessão temporária ativa, atualiza a senha do usuário
-    const { error: updateError } = await this.supabaseService.client.auth.updateUser({
-      password: novaSenha,
-    });
-
-    if (updateError) {
-      throw new InternalServerErrorException('Não foi possível atualizar a senha.');
-    }
-
-    return { success: true, message: 'Senha alterada com sucesso!' };
+    return { success: true, message: 'Senha atualizada com sucesso!' };
   }
 }

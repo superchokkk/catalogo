@@ -4,6 +4,7 @@ import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { AdminGuard } from 'src/auth/admin.guard';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('produtos')
 export class ProductController {
@@ -23,6 +24,7 @@ export class ProductController {
         }
     }
 
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @Post('criar')
     @UseGuards(SupabaseAuthGuard, AdminGuard)
     @UseInterceptors(FilesInterceptor('imagens', 10, {
@@ -45,6 +47,7 @@ export class ProductController {
         }
     }
 
+    @Throttle({ default: { limit: 10, ttl: 60000 } })
     @Put(':id')
     @UseGuards(SupabaseAuthGuard, AdminGuard)
     @UseInterceptors(FilesInterceptor('imagens', 10))
@@ -74,6 +77,7 @@ export class ProductController {
         }
     }
 
+    @Throttle({ default: { limit: 15, ttl: 60000 } })
     @Delete(':id')
     @UseGuards(SupabaseAuthGuard, AdminGuard)
     async deleteProduct(@Param('id') id: string) {

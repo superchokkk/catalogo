@@ -3,14 +3,15 @@ import type { Response, Request } from 'express';
 import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
-import { CreateUserDto } from '../users/user.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
   constructor(private readonly authService: AuthService,
-              private readonly userService: UserService
+    private readonly userService: UserService
   ) { }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   async login(
     @Body('email') email: string,
@@ -31,6 +32,7 @@ export class AuthController {
     return resultado;
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60000 } })
   @Post('logout')
   async logout(@Res({ passthrough: true }) res: Response) {
     res.clearCookie('access_token');
@@ -54,14 +56,9 @@ export class AuthController {
 
   @Post('redefinir-senha')
   async redefinirSenha(
-    @Body('email') email: string,
-    @Body('token') token: string, // Código numérico ou token enviado pelo Supabase
     @Body('novaSenha') novaSenha: string,
   ) {
-    if (!email || !token || !novaSenha) {
-      throw new BadRequestException('Dados incompletos para redefinição.');
-    }
-    return await this.authService.atualizarSenhaComToken(email, token, novaSenha);
+    return await this.authService.atualizarSenha(novaSenha);
   }
 
   @Post('set-session')
