@@ -3,7 +3,7 @@ import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, B
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
-import { AdminGuard } from 'src/auth/admin.guard';
+import { AdminGuard } from '../auth/admin.guard';
 
 @Controller('produtos')
 export class ProductController {

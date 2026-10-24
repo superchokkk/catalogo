@@ -4,6 +4,7 @@ import { SupabaseAuthGuard } from './supabase-auth.guard'
 import { AuthService } from './auth.service';
 import { UserService } from '../users/user.service';
 import { CreateUserDto } from '../users/user.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('auth')
 export class AuthController {
@@ -11,6 +12,7 @@ export class AuthController {
               private readonly userService: UserService
   ) { }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('login')
   async login(
     @Body('email') email: string,
@@ -44,6 +46,7 @@ export class AuthController {
     return req['user'];
   }
 
+  @Throttle({ default: { limit: 3, ttl: 60000 }, email: { limit: 3, ttl: 15 * 60000 } })
   @Post('esqueci-senha')
   async esqueciSenha(@Body('email') email: string) {
     if (!email) {
@@ -52,6 +55,7 @@ export class AuthController {
     return await this.authService.enviarEmailRecuperacao(email);
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
   @Post('redefinir-senha')
   async redefinirSenha(
     @Body('email') email: string,
@@ -64,6 +68,7 @@ export class AuthController {
     return await this.authService.atualizarSenhaComToken(email, token, novaSenha);
   }
 
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @Post('set-session')
   setSession(@Body('access_token') token: string, @Res({ passthrough: true }) res: Response) {
     // Cria o cookie seguro
