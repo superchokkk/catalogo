@@ -41,11 +41,18 @@ SUPABASE_URL=https://seu-projeto.supabase.co
 SUPABASE_PRIVATE_KEY=sua_service_role_key
 SUPABASE_ANON_KEY=sua_anon_key   # usada nos fluxos de autenticação (ex.: redefinição de senha)
 SUPABASE_JWT_SECRET=seu_jwt_secret_do_supabase
+FRONTEND_URL=http://localhost:5173   # origem do front (CORS, checagem de Origin, redirect de recuperação de senha)
+CORS_ORIGINS=http://localhost:3000   # opcional: origens extras, separadas por vírgula (ex.: o Swagger local)
+SWAGGER_ENABLED=true                 # opcional: força o Swagger ligado/desligado (padrão: ligado fora de produção)
 NODE_ENV=development
 PORT=3000
 ```
 
+> `SUPABASE_URL`, `SUPABASE_PRIVATE_KEY`, `SUPABASE_ANON_KEY` e `FRONTEND_URL` são obrigatórias: sem elas a API não sobe.
+>
 > `SUPABASE_PRIVATE_KEY` é a chave *service role*: nunca a exponha no front-end nem a versione.
+>
+> `FRONTEND_URL` e `CORS_ORIGINS` aceitam apenas **origens** (esquema + host + porta), sem caminho: use `http://localhost:3000`, nunca `http://localhost:3000/docs`. Reinicie a API após alterar o `.env`.
 
 ## Executando
 
@@ -90,9 +97,13 @@ Todas as rotas têm o prefixo `/api`.
 
 1. O login chama o Supabase Auth e devolve o token em um cookie `httpOnly` (`secure` em produção, `sameSite: none`).
 2. `SupabaseAuthGuard` lê o cookie, valida o token com `supabase.auth.getUser` e anexa `nivel` e `nome` (claims `user_data`) em `request.user`.
-3. `AdminGuard` libera apenas usuários com `nivel` 0 ou 1. Use `@UseGuards(SupabaseAuthGuard, AdminGuard)` nas rotas administrativas.
+3. `RolesGuard` (depois do `SupabaseAuthGuard`) confere `@Roles(...)` contra o enum `Nivel` (`SUPER_ADMIN` 0, `ADMIN` 1, `USUARIO` 99). Nas rotas administrativas use `@UseGuards(SupabaseAuthGuard, RolesGuard)` + `@Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)`.
 
-O CORS aceita `http://localhost:5173` e o domínio da Vercel, com credenciais.
+O CORS aceita as origens de `FRONTEND_URL` e `CORS_ORIGINS`, com credenciais. Além disso, o `OriginGuard` global rejeita com **403** (`ORIGEM_NAO_AUTORIZADA`) qualquer requisição que não seja GET/HEAD/OPTIONS cujo `Origin`/`Referer` não esteja nessa lista (defesa contra CSRF).
+
+### Testando pelo Swagger
+
+O Swagger fica em `http://localhost:3000/docs` (fora de produção, ou com `SWAGGER_ENABLED=true`). Como ele é servido pela própria API, as chamadas partem da origem `http://localhost:3000`, que precisa estar em `CORS_ORIGINS`; caso contrário o login retorna 403.
 
 ## Banco de dados e Storage (Supabase)
 
