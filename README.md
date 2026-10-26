@@ -1,67 +1,114 @@
-# Catálogo API - NestJS & Supabase
+# Catálogo API — NestJS & Supabase
 
-Uma API back-end robusta desenvolvida com [NestJS](https://nestjs.com/) e integração profunda com o [Supabase](https://supabase.com/) para gerenciamento de banco de dados e autenticação de usuários.
+API back-end de um catálogo de produtos, desenvolvida com [NestJS](https://nestjs.com/) e [Supabase](https://supabase.com/) (banco de dados, Storage e autenticação). O front-end é um projeto separado (Vite) publicado em `https://dgconcept-catalogo.vercel.app`.
 
-## Tecnologias Utilizadas
+## Tecnologias
 
-* **Framework:** NestJS (Node.js com TypeScript)
-* **Autenticação:** JWT (JSON Web Tokens) com Supabase Auth Guards
-* **BaaS / Banco de Dados:** Supabase
-* **Testes:** Jest (E2E e Unitários)
-* **Formatação/Linting:** ESLint e Prettier
+- **Framework:** NestJS 11 (Node.js + TypeScript)
+- **Banco / Auth / Storage:** Supabase (`@supabase/supabase-js`)
+- **Autenticação:** cookie `httpOnly` com o token do Supabase, validado por `SupabaseAuthGuard`
+- **Validação:** `class-validator` + `ValidationPipe` (`whitelist: true`)
+- **Rate limiting:** `@nestjs/throttler`
+- **Upload:** Multer (`FilesInterceptor`)
+- **Testes:** Jest + Supertest
+- **Qualidade:** ESLint e Prettier
 
-## Estrutura do Projeto
+## Estrutura
 
-A arquitetura do projeto segue o padrão modular do NestJS, perfeitamente adequada para o desenvolvimento de APIs, organizada nos seguintes domínios principais:
+```
+catalogo-nest-tailwind/
+├── src/
+│   ├── auth/        # login/logout, guards (SupabaseAuthGuard, AdminGuard), JwtStrategy
+│   ├── users/       # criação de usuários (auth.users + public.users)
+│   ├── products/    # CRUD de produtos e imagens (Storage)
+│   ├── supabase/    # SupabaseService (client único do Supabase)
+│   ├── app.module.ts
+│   └── main.ts      # prefixo /api, cookie-parser, ValidationPipe, CORS
+└── test/            # testes e2e
+```
 
-* `src/auth/` - Módulo de autenticação contendo estratégias JWT, `SupabaseAuthGuard` e um `AdminGuard` para controle de rotas baseadas em permissões (RBAC).
-* `src/users/` - Módulo responsável pelo gerenciamento dos usuários e integração de dados de perfil.
-* `src/products/` - Módulo central para as regras de negócio e endpoints do catálogo de produtos (CRUD).
-* `src/supabase/` - Serviço de integração abstraindo a comunicação direta com a API do Supabase.
+## Instalação
 
-## Instalação e Configuração
-
-**1. Clone o projeto e instale as dependências:**
 ```bash
+cd catalogo-nest-tailwind
 npm install
 ```
 
-**2. Variáveis de Ambiente:**
-Crie um arquivo `.env` na raiz do projeto. Com base na integração com o Supabase e JWT, você precisará das seguintes variáveis (ajuste conforme a configuração do seu ambiente):
+Crie um arquivo `.env` em `catalogo-nest-tailwind/`:
+
 ```env
-SUPABASE_URL=sua_url_do_supabase
-SUPABASE_KEY=sua_anon_key_do_supabase
-JWT_SECRET=sua_chave_secreta
+SUPABASE_URL=https://seu-projeto.supabase.co
+SUPABASE_PRIVATE_KEY=sua_service_role_key
+SUPABASE_ANON_KEY=sua_anon_key   # usada nos fluxos de autenticação (ex.: redefinição de senha)
+SUPABASE_JWT_SECRET=seu_jwt_secret_do_supabase
+FRONTEND_URL=http://localhost:5173   # origem do front (CORS, checagem de Origin, redirect de recuperação de senha)
+CORS_ORIGINS=http://localhost:3000   # opcional: origens extras, separadas por vírgula (ex.: o Swagger local)
+SWAGGER_ENABLED=true                 # opcional: força o Swagger ligado/desligado (padrão: ligado fora de produção)
+NODE_ENV=development
+PORT=3000
 ```
 
-## Executando a Aplicação
+> `SUPABASE_URL`, `SUPABASE_PRIVATE_KEY`, `SUPABASE_ANON_KEY` e `FRONTEND_URL` são obrigatórias: sem elas a API não sobe.
+>
+> `SUPABASE_PRIVATE_KEY` é a chave *service role*: nunca a exponha no front-end nem a versione.
+>
+> `FRONTEND_URL` e `CORS_ORIGINS` aceitam apenas **origens** (esquema + host + porta), sem caminho: use `http://localhost:3000`, nunca `http://localhost:3000/docs`. Reinicie a API após alterar o `.env`.
+
+## Executando
 
 ```bash
-# Modo desenvolvimento padrão
-npm run start
-
-# Modo desenvolvimento com watch (Recomendado)
-npm run start:dev
-
-# Modo de produção
-npm run build
-npm run start:prod
+npm run start:dev    # desenvolvimento com watch
+npm run start        # desenvolvimento sem watch
+npm run build        # compila para dist/
+npm run start:prod   # produção (após build)
 ```
 
-## Testes
+A API sobe em `http://localhost:3000/api` (ou na porta definida em `PORT`).
 
-O projeto já está configurado com o Jest para garantir a qualidade e estabilidade do código da API.
+## Scripts úteis
 
 ```bash
-# Executar testes unitários
-npm run test
-
-# Executar testes End-to-End (E2E)
-npm run test:e2e
+npm run lint         # ESLint (com --fix)
+npm run format       # Prettier
+npm test             # testes unitários
+npm run test:e2e     # testes end-to-end
+npm run test:cov     # cobertura
 ```
 
-## Autenticação e Segurança
+## Endpoints
 
-A API é protegida usando Guards personalizados do NestJS, focados na segurança dos endpoints:
-* **SupabaseAuthGuard:** Garante que o usuário tem uma sessão e um token válido no Supabase antes de acessar o endpoint.
-* **AdminGuard:** Verifica as permissões de nível superior, restringindo rotas sensíveis (como deletar ou criar produtos no catálogo) apenas a administradores devidamente autorizados.
+Todas as rotas têm o prefixo `/api`.
+
+| Método | Rota | Acesso | Descrição |
+|---|---|---|---|
+| POST | `/auth/login` | público | Login com `email` e `senha`; grava o cookie `access_token` |
+| POST | `/auth/logout` | público | Remove o cookie |
+| GET | `/auth/me` | autenticado | Dados do usuário logado (id, email, nome, nível) |
+| POST | `/auth/esqueci-senha` | público | Envia e-mail de recuperação de senha |
+| POST | `/auth/redefinir-senha` | — | Define nova senha |
+| POST | `/auth/set-session` | — | Grava o cookie a partir de um token (fluxo de recuperação) |
+| POST | `/usuarios/criar` | público | Cria usuário (`nome`, `email`, `senha`, `confirmarSenha`) |
+| GET | `/produtos/listagem` | público | Lista produtos ativos com imagens |
+| POST | `/produtos/criar` | admin | Cria produto (multipart, campo `imagens` até 10 × 5 MB) |
+| PUT | `/produtos/:id` | admin | Atualiza produto e imagens |
+| DELETE | `/produtos/:id` | admin | Remove produto e imagens |
+
+## Autenticação e autorização
+
+1. O login chama o Supabase Auth e devolve o token em um cookie `httpOnly` (`secure` em produção, `sameSite: none`).
+2. `SupabaseAuthGuard` lê o cookie, valida o token com `supabase.auth.getUser` e anexa `nivel` e `nome` (claims `user_data`) em `request.user`.
+3. `RolesGuard` (depois do `SupabaseAuthGuard`) confere `@Roles(...)` contra o enum `Nivel` (`SUPER_ADMIN` 0, `ADMIN` 1, `USUARIO` 99). Nas rotas administrativas use `@UseGuards(SupabaseAuthGuard, RolesGuard)` + `@Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)`.
+
+O CORS aceita as origens de `FRONTEND_URL` e `CORS_ORIGINS`, com credenciais. Além disso, o `OriginGuard` global rejeita com **403** (`ORIGEM_NAO_AUTORIZADA`) qualquer requisição que não seja GET/HEAD/OPTIONS cujo `Origin`/`Referer` não esteja nessa lista (defesa contra CSRF).
+
+### Testando pelo Swagger
+
+O Swagger fica em `http://localhost:3000/docs` (fora de produção, ou com `SWAGGER_ENABLED=true`). Como ele é servido pela própria API, as chamadas partem da origem `http://localhost:3000`, que precisa estar em `CORS_ORIGINS`; caso contrário o login retorna 403.
+
+## Banco de dados e Storage (Supabase)
+
+Tabelas usadas: `users`, `produtos`, `produto_imagens`. Bucket de imagens: `produtos-fotos`.
+
+## Melhorias planejadas
+
+Veja [todo.md](./todo.md) para a lista de melhorias de segurança, tecnologia e lógica.

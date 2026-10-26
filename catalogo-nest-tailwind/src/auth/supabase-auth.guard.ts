@@ -1,42 +1,35 @@
 import { Injectable, CanActivate, ExecutionContext, UnauthorizedException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { UserService } from '../users/user.service';
+import { COOKIE_ACESSO } from './cookies';
+import { MSG } from '../common/respostas';
 
 @Injectable()
 export class SupabaseAuthGuard implements CanActivate {
-  constructor(private supabaseService: SupabaseService) {}
+  constructor(
+    private supabaseService: SupabaseService,
+    private userService: UserService,
+  ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    
-    // 1. Busca o token no Cookie PRIMEIRO. Se não achar, tenta no cabeçalho (útil para testes no Postman).
-    const token = request.cookies?.['access_token'];
 
+    const token = request.cookies?.[COOKIE_ACESSO];
     if (!token) {
-      throw new UnauthorizedException('Token não encontrado nos cookies.');
+      throw new UnauthorizedException(MSG.TOKEN_AUSENTE);
     }
 
-    // 2. O Supabase verifica se o token é autêntico e válido
+    // O Supabase verifica se o token é autêntico, válido e não revogado
     const { data, error } = await this.supabaseService.client.auth.getUser(token);
 
     if (error || !data.user) {
-      throw new UnauthorizedException('Token inválido ou expirado.');
+      throw new UnauthorizedException(MSG.TOKEN_INVALIDO);
     }
 
-    // 3. Extrai os dados adicionais do payload
-    try {
-      const base64Payload = token.split('.')[1];
-      const payloadString = Buffer.from(base64Payload, 'base64').toString('utf-8');
-      const tokenPayload = JSON.parse(payloadString);
-      
-      const nivel = tokenPayload.user_data?.nivel;
-      const nome = tokenPayload.user_data?.nome; // Extraímos o nome também
+    // Nível e nome vêm do banco, e não de claims do token que a API teria de decodificar à mão
+    const perfil = await this.userService.buscarPerfil(data.user.id);
 
-      // Sucesso! Anexa os dados do usuário à requisição (Qualquer usuário logado passa)
-      request.user = { ...data.user, nivel, nome };
-      return true;
-
-    } catch (err) {
-      throw new UnauthorizedException('Erro ao processar dados da sessão.');
-    }
+    request.user = { ...data.user, nivel: perfil?.nivel, nome: perfil?.nome };
+    return true;
   }
 }

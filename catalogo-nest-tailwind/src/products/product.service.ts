@@ -1,5 +1,8 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
+import { CreateProductDto, UpdateProductDto } from './product.dto';
+import { validarImagens } from './image-validation';
+import { MSG } from '../common/respostas';
 
 @Injectable()
 export class ProductService {
@@ -20,7 +23,6 @@ export class ProductService {
 
     if (error) throw error;
 
-    //const { data: buckets } = await this.supabaseService.client.storage.listBuckets();
     return data.map((produto) => ({
       ...produto,
       produto_imagens: produto.produto_imagens.map((img) => ({
@@ -30,14 +32,16 @@ export class ProductService {
     }));
   }
 
-  async createProductWithImages(productData: any, files: Array<Express.Multer.File>, userId: string) {
+  async createProductWithImages(productData: CreateProductDto, files: Array<Express.Multer.File>, userId: string) {
+    // Confere o conteúdo real dos arquivos antes de gravar qualquer coisa
+    const tipos = validarImagens(files);
 
     const { data: product, error: pError } = await this.supabaseService.client
       .from('produtos')
       .insert([{
         nome: productData.nome,
         descricao: productData.descricao,
-        preco: parseFloat(productData.preco.toString().replace(',', '.')),
+        preco: productData.preco,
         status: true,
         created_by: userId,
         updated_by: userId
@@ -54,15 +58,15 @@ export class ProductService {
     const imageUrls: { produto_id: string; url_path: string }[] = [];
 
     if (files && files.length > 0) {
-      for (const file of files) {
-        const fileExt = file.originalname.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+      for (const [i, file] of files.entries()) {
+        // extensão e contentType vêm do tipo detectado, nunca do nome/mimetype enviados
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${tipos[i].ext}`;
         const filePath = `produtos/${product.id}/${fileName}`;
 
         const { error: uError } = await this.supabaseService.client.storage
           .from('produtos-fotos')
           .upload(filePath, file.buffer, {
-            contentType: file.mimetype,
+            contentType: tipos[i].mime,
             upsert: true
           });
 
@@ -115,25 +119,22 @@ export class ProductService {
     }
   }
 
-  async updateProductWithImages(id: string, productData: any, files: Array<Express.Multer.File>, imagensManter: string[] | string, userId: string) {
-    const precoAtual = parseFloat(productData.preco.toString().replace(',', '.'));
-    const precoAntigo = productData.preco_antigo
-      ? parseFloat(productData.preco_antigo.toString().replace(',', '.'))
-      : null;
-    const isPromocao = productData.promocao === 'true';
+  async updateProductWithImages(id: string, productData: UpdateProductDto, files: Array<Express.Multer.File>, urlsParaManter: string[], userId: string) {
+    const tipos = validarImagens(files);
 
     // 1. Atualiza os dados do produto
     const { error: updateError } = await this.supabaseService.client.from('produtos').update({
       nome: productData.nome,
       descricao: productData.descricao,
-      preco: precoAtual,
-      preco_antigo: precoAntigo,
-      promocao: isPromocao,
+      preco: productData.preco,
+      preco_antigo: productData.preco_antigo ?? null,
+      promocao: productData.promocao === true,
       updated_by: userId
     }).eq('id', id);
 
     if (updateError) {
-      throw new InternalServerErrorException(`Erro ao atualizar dados: ${updateError.message}`);
+      console.error('Erro ao atualizar produto:', updateError.message);
+      throw new InternalServerErrorException(MSG.PRODUTO_ATUALIZAR_FALHOU);
     }
 
     // 2. Busca as imagens atuais no banco
@@ -143,9 +144,6 @@ export class ProductService {
       .eq('produto_id', id);
 
     if (fetchImgError) throw new InternalServerErrorException('Erro ao buscar imagens no banco.');
-
-    // Garante que imagensManter seja um array
-    const urlsParaManter = Array.isArray(imagensManter) ? imagensManter : (imagensManter ? [imagensManter] : []);
 
     // Filtra as imagens que devem ser apagadas
     const imagensParaDeletar = imagensAtuais?.filter(
@@ -161,7 +159,7 @@ export class ProductService {
 
         // EXTRAÇÃO À PROVA DE FALHAS: Pega apenas o último fragmento da URL (o nome do arquivo)
         const fileName = img.url_path.split('/').pop()?.split('?')[0];
-        
+
         if (fileName) {
           // Reconstrói o caminho idêntico ao do bucket: produtos/ID/arquivo.jpeg
           const caminhoExato = `produtos/${id}/${decodeURIComponent(fileName)}`;
@@ -171,7 +169,6 @@ export class ProductService {
 
       // Deleta os arquivos físicos do Bucket
       if (pathsParaStorage.length > 0) {
-        console.log('[DEBUG UPDATE] Apagando do Storage:', pathsParaStorage);
         await this.supabaseService.client.storage.from('produtos-fotos').remove(pathsParaStorage);
       }
     }
@@ -180,19 +177,21 @@ export class ProductService {
     if (files && files.length > 0) {
       const novasRefs: { produto_id: string; url_path: string }[] = [];
 
-      for (const file of files) {
-        const fileExt = file.originalname.split('.').pop();
-        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${fileExt}`;
+      for (const [i, file] of files.entries()) {
+        const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.${tipos[i].ext}`;
         const filePath = `produtos/${id}/${fileName}`;
 
         const { error: uError } = await this.supabaseService.client.storage
           .from('produtos-fotos')
           .upload(filePath, file.buffer, {
-            contentType: file.mimetype,
+            contentType: tipos[i].mime,
             upsert: true
           });
 
-        if (uError) throw new InternalServerErrorException(`Erro no upload: ${uError.message}`);
+        if (uError) {
+          console.error('Erro no upload:', uError.message);
+          throw new InternalServerErrorException('Erro ao enviar imagem.');
+        }
 
         const { data: { publicUrl } } = this.supabaseService.client.storage
           .from('produtos-fotos')
@@ -212,7 +211,10 @@ export class ProductService {
         .select('id, url_path')
         .eq('produto_id', id);
 
-    if (erroImagens) throw new InternalServerErrorException(erroImagens.message);
+    if (erroImagens) {
+      console.error('Erro ao buscar imagens do produto:', erroImagens.message);
+      throw new InternalServerErrorException(MSG.PRODUTO_DELETAR_FALHOU);
+    }
 
     if (imagens && imagens.length > 0) {
       const pathsParaStorage: string[] = [];
@@ -220,7 +222,7 @@ export class ProductService {
       for (const img of imagens) {
         // Pega apenas o nome do arquivo no final da URL
         const fileName = img.url_path.split('/').pop()?.split('?')[0];
-        
+
         if (fileName) {
           // Monta a string exata para o bucket
           const caminhoExato = `produtos/${id}/${decodeURIComponent(fileName)}`;
@@ -230,10 +232,9 @@ export class ProductService {
 
       // 2. Apaga todas as imagens físicas de uma vez no Storage
       if (pathsParaStorage.length > 0) {
-          console.log('[DEBUG DELETE] Apagando do Storage:', pathsParaStorage);
           const { error: erroBucket } = await this.supabaseService.client
               .storage
-              .from('produtos-fotos') 
+              .from('produtos-fotos')
               .remove(pathsParaStorage);
 
           if (erroBucket) {
@@ -241,7 +242,7 @@ export class ProductService {
               // Não vamos travar a exclusão do produto se a foto falhar
           }
       }
-      
+
       // 3. Deleta as referências na tabela produto_imagens
       await this.supabaseService.client.from('produto_imagens').delete().eq('produto_id', id);
     }
@@ -252,6 +253,9 @@ export class ProductService {
         .delete()
         .eq('id', id);
 
-    if (error) throw new InternalServerErrorException(error.message);
+    if (error) {
+      console.error('Erro ao deletar produto:', error.message);
+      throw new InternalServerErrorException(MSG.PRODUTO_DELETAR_FALHOU);
+    }
   }
 }

@@ -1,91 +1,110 @@
-// controllers/productController.js
-import { Controller, Get, Post, InternalServerErrorException, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete } from '@nestjs/common';
+import { Controller, Get, Post, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiCookieAuth, ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
-import { AdminGuard } from 'src/auth/admin.guard';
-import { Throttle } from '@nestjs/throttler';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { Nivel } from '../auth/nivel.enum';
+import { CreateProductDto, UpdateProductDto } from './product.dto';
+import { MAX_IMAGENS, opcoesUploadImagem } from './image-validation';
+import { ApiErros, ApiSucesso, ok } from '../common/respostas';
 
+// Corpo multipart: campos do DTO + arquivos no campo `imagens`.
+const corpoMultipart = (dto: Function) => ({
+    schema: {
+        allOf: [
+            { $ref: `#/components/schemas/${dto.name}` },
+            {
+                type: 'object',
+                properties: {
+                    imagens: {
+                        type: 'array',
+                        maxItems: MAX_IMAGENS,
+                        items: { type: 'string', format: 'binary' },
+                        description: 'JPEG, PNG, WebP ou GIF, até 5 MB cada (o tipo é conferido pelo conteúdo).',
+                    },
+                },
+            },
+        ],
+    },
+});
+
+@ApiTags('Produtos')
+@ApiExtraModels(CreateProductDto, UpdateProductDto)
 @Controller('produtos')
 export class ProductController {
     constructor(private readonly productService: ProductService) { }
 
+    @ApiOperation({ summary: 'Listar catálogo', description: 'Público. Apenas produtos com `status = true`, do mais novo para o mais antigo, com suas imagens.' })
+    @ApiSucesso(200, 'Traz `produtos: [{ ..., produto_imagens: [{ id, url_path, url_publica }] }]` e `podeAtualizarUI`.')
+    @ApiErros(429, 500)
     @Get('listagem')
     async listProducts() {
-        try {
-            const produtos = await this.productService.getProductsWithImages();
-            return {
-                produtos,
-                podeAtualizarUI: true, // or derive this from business logic
-            };
-        } catch (error: any) {
-            console.error('Erro no Controller:', error.message);
-            throw new InternalServerErrorException('Erro interno ao buscar catálogo.');
-        }
+        const produtos = await this.productService.getProductsWithImages();
+        return ok('Catálogo carregado com sucesso.', {
+            produtos,
+            podeAtualizarUI: true, // or derive this from business logic
+        });
     }
 
-    @Throttle({ default: { limit: 15, ttl: 60000 } })
+    @ApiOperation({ summary: 'Criar produto', description: 'Requer login com nível 0 ou 1. Envio em multipart/form-data.' })
+    @ApiCookieAuth('cookie')
+    @ApiConsumes('multipart/form-data')
+    @ApiBody(corpoMultipart(CreateProductDto))
+    @ApiSucesso(201, 'Produto criado. Os campos do produto (`id`, `nome`, `preco`...) vêm no mesmo nível de `success`/`message`.')
+    @ApiErros(400, 401, 403, 429)
     @Post('criar')
-    @UseGuards(SupabaseAuthGuard, AdminGuard)
-    @UseInterceptors(FilesInterceptor('imagens', 10, {
-        limits: {
-            fileSize: 5 * 1024 * 1024
-        }
-    }))
+    @UseGuards(SupabaseAuthGuard, RolesGuard)
+    @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+    @UseInterceptors(FilesInterceptor('imagens', MAX_IMAGENS, opcoesUploadImagem))
     async createProduct(
-        @Body() productData: any,
+        @Body() productData: CreateProductDto,
         @UploadedFiles() files: Array<Express.Multer.File>, // Captura os binários das fotos
         @Req() req: any
     ) {
-        try {
-            const userId = req.user.id;
-            // Passamos os dados E os arquivos para o Service
-            return await this.productService.createProductWithImages(productData, files, userId);
-        } catch (error: any) {
-            console.error('Erro no Controller:', error.message);
-            throw new InternalServerErrorException('Erro interno ao criar produto.');
-        }
+        // Passamos os dados E os arquivos para o Service
+        const produto = await this.productService.createProductWithImages(productData, files, req.user.id);
+        return ok('Produto criado com sucesso.', produto);
     }
 
-    @Throttle({ default: { limit: 10, ttl: 60000 } })
+    @ApiOperation({ summary: 'Atualizar produto', description: 'Requer nível 0 ou 1. Imagens atuais que não estiverem em `imagensExistentes` são apagadas; arquivos em `imagens` são acrescentados.' })
+    @ApiCookieAuth('cookie')
+    @ApiParam({ name: 'id', format: 'uuid' })
+    @ApiConsumes('multipart/form-data')
+    @ApiBody(corpoMultipart(UpdateProductDto))
+    @ApiSucesso(200, 'Produto atualizado.')
+    @ApiErros(400, 401, 403, 429)
     @Put(':id')
-    @UseGuards(SupabaseAuthGuard, AdminGuard)
-    @UseInterceptors(FilesInterceptor('imagens', 10))
+    @UseGuards(SupabaseAuthGuard, RolesGuard)
+    @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+    @UseInterceptors(FilesInterceptor('imagens', MAX_IMAGENS, opcoesUploadImagem))
     async updateProduct(
-        @Param('id') id: string,
-        @Body() productData: any,
+        @Param('id', ParseUUIDPipe) id: string,
+        @Body() productData: UpdateProductDto,
         @UploadedFiles() files: Array<Express.Multer.File>,
         @Req() req: any
     ) {
-        try {
-            const userId = req.user.id;
-            // Parse das imagens que devem ser mantidas (enviadas como string JSON pelo frontend)
-            const imagensExistentes = productData.imagensExistentes
-                ? JSON.parse(productData.imagensExistentes)
-                : [];
-
-            return await this.productService.updateProductWithImages(
-                id,
-                productData,
-                files,
-                imagensExistentes,
-                userId
-            );
-        } catch (error: any) {
-            console.error('Erro no Update Controller:', error.message);
-            throw new InternalServerErrorException('Erro ao atualizar produto.');
-        }
+        await this.productService.updateProductWithImages(
+            id,
+            productData,
+            files,
+            productData.imagensExistentes ?? [],
+            req.user.id
+        );
+        return ok('Produto atualizado com sucesso.');
     }
 
-    @Throttle({ default: { limit: 15, ttl: 60000 } })
+    @ApiOperation({ summary: 'Excluir produto', description: 'Requer nível 0 ou 1. Apaga o produto, as referências e os arquivos do storage.' })
+    @ApiCookieAuth('cookie')
+    @ApiParam({ name: 'id', format: 'uuid' })
+    @ApiSucesso(200, 'Produto excluído.')
+    @ApiErros(400, 401, 403, 429)
     @Delete(':id')
-    @UseGuards(SupabaseAuthGuard, AdminGuard)
-    async deleteProduct(@Param('id') id: string) {
-        try {
-            return await this.productService.deleteProduct(id);
-        } catch (error: any) {
-            console.error('Erro no Delete Controller:', error.message);
-            throw new InternalServerErrorException('Erro ao deletar produto.');
-        }
+    @UseGuards(SupabaseAuthGuard, RolesGuard)
+    @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+    async deleteProduct(@Param('id', ParseUUIDPipe) id: string) {
+        await this.productService.deleteProduct(id);
+        return ok('Produto excluído com sucesso.');
     }
 }

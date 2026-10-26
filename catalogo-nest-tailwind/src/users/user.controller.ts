@@ -2,11 +2,13 @@
 import { Controller, Post, InternalServerErrorException, Body, BadRequestException } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './user.dto';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('usuarios')
 export class UserController {
     constructor(private readonly userService: UserService) { }
 
+    @Throttle({ default: { limit: 5, ttl: 60000 } })
     @Post('criar')
     async createUser(
         @Body() dto: CreateUserDto
