@@ -58,6 +58,8 @@ export const MSG = {
   ORIGEM_NAO_AUTORIZADA: 'Origem não autorizada.',
   ERRO_INTERNO: 'Erro interno do servidor.',
   SOMENTE_IMAGENS: 'Apenas imagens JPEG, PNG, WebP ou GIF são aceitas.',
+  SENHAS_DIFERENTES: 'As senhas não coincidem.',
+  USUARIO_CRIAR_FALHOU: 'Não foi possível criar o usuário. Verifique os dados informados.',
   PRODUTO_ATUALIZAR_FALHOU: 'Erro ao atualizar produto.',
   PRODUTO_DELETAR_FALHOU: 'Erro ao deletar produto.',
 } as const;
