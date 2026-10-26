@@ -97,5 +97,8 @@
   "allowScripts": {
     "class-validator@0.15.1": true,
     "unrs-resolver@1.12.2": true
+  },
+  "overrides": {
+    "multer": "^2.5.0"
   }
 }

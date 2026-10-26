@@ -18,13 +18,14 @@ API back-end de um catálogo de produtos, desenvolvida com [NestJS](https://nest
 ```
 catalogo-nest-tailwind/
 ├── src/
-│   ├── auth/        # login/logout, guards (SupabaseAuthGuard, AdminGuard), JwtStrategy
-│   ├── users/       # criação de usuários (auth.users + public.users)
+│   ├── auth/        # login/logout, guards (SupabaseAuthGuard, RolesGuard), JwtStrategy
+│   ├── users/       # cadastro de usuários (auth.users + public.users), rota POST /usuarios/criar
 │   ├── products/    # CRUD de produtos e imagens (Storage)
 │   ├── supabase/    # SupabaseService (client único do Supabase)
 │   ├── app.module.ts
 │   └── main.ts      # prefixo /api, cookie-parser, ValidationPipe, CORS
-└── test/            # testes e2e
+├── test/            # testes e2e
+└── (raiz) docs/     # contrato para o front: openapi.json + API-FRONT.md
 ```
 
 ## Instalação
@@ -82,12 +83,13 @@ Todas as rotas têm o prefixo `/api`.
 | Método | Rota | Acesso | Descrição |
 |---|---|---|---|
 | POST | `/auth/login` | público | Login com `email` e `senha`; grava o cookie `access_token` |
-| POST | `/auth/logout` | público | Remove o cookie |
+| POST | `/auth/refresh` | cookie `refresh_token` | Renova os cookies de sessão |
+| POST | `/auth/logout` | público | Revoga a sessão e remove os cookies |
 | GET | `/auth/me` | autenticado | Dados do usuário logado (id, email, nome, nível) |
 | POST | `/auth/esqueci-senha` | público | Envia e-mail de recuperação de senha |
 | POST | `/auth/redefinir-senha` | — | Define nova senha |
 | POST | `/auth/set-session` | — | Grava o cookie a partir de um token (fluxo de recuperação) |
-| POST | `/usuarios/criar` | público | Cria usuário (`nome`, `email`, `senha`, `confirmarSenha`) |
+| POST | `/usuarios/criar` | público | Cria usuário (`nome`, `email`, `senha`, `confirmarSenha`); não faz login. Limite: 5/min por IP e 5/15 min por e-mail |
 | GET | `/produtos/listagem` | público | Lista produtos ativos com imagens |
 | POST | `/produtos/criar` | admin | Cria produto (multipart, campo `imagens` até 10 × 5 MB) |
 | PUT | `/produtos/:id` | admin | Atualiza produto e imagens |
@@ -96,7 +98,7 @@ Todas as rotas têm o prefixo `/api`.
 ## Autenticação e autorização
 
 1. O login chama o Supabase Auth e devolve o token em um cookie `httpOnly` (`secure` em produção, `sameSite: none`).
-2. `SupabaseAuthGuard` lê o cookie, valida o token com `supabase.auth.getUser` e anexa `nivel` e `nome` (claims `user_data`) em `request.user`.
+2. `SupabaseAuthGuard` lê o cookie, valida o token com `supabase.auth.getUser` e anexa `nivel` e `nome` (lidos de `public.users` a cada requisição) em `request.user`.
 3. `RolesGuard` (depois do `SupabaseAuthGuard`) confere `@Roles(...)` contra o enum `Nivel` (`SUPER_ADMIN` 0, `ADMIN` 1, `USUARIO` 99). Nas rotas administrativas use `@UseGuards(SupabaseAuthGuard, RolesGuard)` + `@Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)`.
 
 O CORS aceita as origens de `FRONTEND_URL` e `CORS_ORIGINS`, com credenciais. Além disso, o `OriginGuard` global rejeita com **403** (`ORIGEM_NAO_AUTORIZADA`) qualquer requisição que não seja GET/HEAD/OPTIONS cujo `Origin`/`Referer` não esteja nessa lista (defesa contra CSRF).
@@ -104,6 +106,19 @@ O CORS aceita as origens de `FRONTEND_URL` e `CORS_ORIGINS`, com credenciais. Al
 ### Testando pelo Swagger
 
 O Swagger fica em `http://localhost:3000/docs` (fora de produção, ou com `SWAGGER_ENABLED=true`). Como ele é servido pela própria API, as chamadas partem da origem `http://localhost:3000`, que precisa estar em `CORS_ORIGINS`; caso contrário o login retorna 403.
+
+## Contrato para o front-end
+
+A pasta [`docs/`](./docs) tem o que o time de front precisa, sem olhar o código do back:
+
+- `docs/openapi.json`: contrato OpenAPI (rotas, DTOs, respostas e erros).
+- `docs/API-FRONT.md`: guia curto (cookies, refresh, formato de resposta, upload, níveis de acesso).
+
+Sempre que rotas ou DTOs mudarem, regenere o `openapi.json` (com a API no ar, baixe `http://localhost:3000/docs-json`) e atualize o guia. O front pode gerar tipos com `npx openapi-typescript docs/openapi.json -o src/api-types.ts`.
+
+## Limites de proteção
+
+O rate limiting (`@nestjs/throttler`, em memória) reduz abuso e força bruta, mas **não substitui proteção contra DDoS**: use um WAF/CDN na frente, e CAPTCHA no cadastro se necessário. Com mais de uma instância, o contador precisaria de storage compartilhado (ex.: Redis).
 
 ## Banco de dados e Storage (Supabase)
 

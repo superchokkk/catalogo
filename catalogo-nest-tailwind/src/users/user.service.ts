@@ -1,4 +1,5 @@
-import { BadRequestException, Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { MSG } from '../common/respostas';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -31,7 +32,8 @@ export class UserService {
     });
 
     if (authError) {
-      throw new BadRequestException(authError.message);
+      console.error('Erro ao criar usuário no auth:', authError.message);
+      throw new BadRequestException(MSG.USUARIO_CRIAR_FALHOU);
     }
 
     if (!authData.user) {
@@ -43,16 +45,19 @@ export class UserService {
     //criar no public.users (client administrativo, com a service_role)
     const { data: publicData, error: publicError } = await this.supabaseService.client
       .from('users')
-      .upsert([{
+      .insert([{
         id: userId,
         email: email,
         nome: nome
       }])
-      .select()
+      .select('id, nome, email')
       .single();
 
     if (publicError) {
-      throw new BadRequestException(publicError.message);
+      console.error('Erro ao gravar usuário em public.users:', publicError.message);
+      // desfaz o registro no auth para não deixar conta sem perfil
+      await this.supabaseService.client.auth.admin.deleteUser(userId);
+      throw new BadRequestException(MSG.USUARIO_CRIAR_FALHOU);
     }
 
     return publicData;
