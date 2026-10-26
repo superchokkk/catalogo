@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 
 @Injectable()
@@ -43,7 +43,7 @@ export class UserService {
     //criar no public.users (client administrativo, com a service_role)
     const { data: publicData, error: publicError } = await this.supabaseService.client
       .from('users')
-      .insert([{
+      .upsert([{
         id: userId,
         email: email,
         nome: nome
