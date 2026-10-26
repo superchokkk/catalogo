@@ -5,6 +5,22 @@ import { SupabaseService } from '../supabase/supabase.service';
 export class UserService {
   constructor(private supabaseService: SupabaseService) { }
 
+  // Nome e nível vêm da tabela public.users (consultada com a service_role), e não de
+  // claims do JWT: assim o nível não depende de como o hook do Supabase preenche o token.
+  async buscarPerfil(userId: string): Promise<{ nome?: string; nivel?: number } | null> {
+    const { data, error } = await this.supabaseService.client
+      .from('users')
+      .select('nome, nivel')
+      .eq('id', userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Erro ao buscar perfil do usuário:', error.message);
+      return null;
+    }
+    return data;
+  }
+
   async createUser(email: string, senha: string, nome: string) {
     //criar no auth.users (client descartável: o signUp pode devolver uma sessão, e ela
     //não pode ficar guardada no client administrativo compartilhado)
@@ -41,41 +57,4 @@ export class UserService {
 
     return publicData;
   }
-
-
-
-  /*async registrarNoBanco(nome: string, email: string, senha: string) {
-    const { data: authData, error: authError } = await this.supabaseService.client.auth.signUp({
-      email: email,
-      password: senha,
-    });
-  
-    if (authError) {
-      throw new BadRequestException(`Erro no Supabase Auth: ${authError.message}`);
-    } if (!authData.user) {
-      throw new BadRequestException('Não foi possível gerar o usuário no Auth.');
-    }
-  
-    const { data: dbData, error: dbError } = await this.supabaseService.client
-      .from('users')
-      .upsert([
-        {
-          id: authData.user.id,
-          nome: nome,
-          email: email,
-          nivel: 99,
-        },
-      ])
-      .select()
-      .single();
-  
-    if (dbError) {
-      throw new BadRequestException(`Erro ao salvar perfil público: ${dbError.message}`);
-    }
-  
-    return {
-      message: 'Usuário criado com sucesso!',
-      user: dbData,
-    };
-  }*/
 }

@@ -67,7 +67,9 @@ describe('Contaminação do client administrativo', () => {
       SUPABASE_URL: url, SUPABASE_PRIVATE_KEY: CHAVE_SERVICE, SUPABASE_ANON_KEY: CHAVE_ANON,
     };
     const supabase = new SupabaseService({ get: (k: string) => env[k] } as unknown as ConfigService);
-    return { supabase, auth: new AuthService(supabase), usuarios: new UserService(supabase) };
+    const usuarios = new UserService(supabase);
+    const config = { get: (k: string) => (k === 'FRONTEND_URL' ? 'http://localhost:5173' : undefined) } as unknown as ConfigService;
+    return { supabase, auth: new AuthService(supabase, usuarios, config), usuarios };
   };
 
   // Consulta "de admin" feita DEPOIS da operação testada.

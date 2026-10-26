@@ -3,6 +3,7 @@ import { AddressInfo } from 'net';
 import { ConfigService } from '@nestjs/config';
 import { SupabaseService } from '../supabase/supabase.service';
 import { AuthService } from './auth.service';
+import { UserService } from '../users/user.service';
 
 // Servidor Supabase FALSO: registra o cabeçalho Authorization de cada chamada,
 // o que permite provar "em nome de quem" cada operação foi executada.
@@ -71,7 +72,7 @@ describe('AuthService › atualizarSenhaComToken', () => {
       ...env,
     };
     const supabase = new SupabaseService({ get: (k: string) => valores[k] } as unknown as ConfigService);
-    return { supabase, auth: new AuthService(supabase) };
+    return { supabase, auth: new AuthService(supabase, new UserService(supabase), new ConfigService({ FRONTEND_URL: 'http://localhost:5173' })) };
   };
 
   const updates = () => chamadas.filter((c) => c.metodo === 'PUT' && c.caminho === '/auth/v1/user');

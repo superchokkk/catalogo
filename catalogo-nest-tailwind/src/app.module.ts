@@ -1,7 +1,10 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD } from '@nestjs/core';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { throttlerOptions } from './common/throttler.config';
+import { validarEnv } from './common/env.validation';
+import { OriginGuard } from './common/origin.guard';
+import { AllExceptionsFilter } from './common/all-exceptions.filter';
 import { JwtStrategy } from './auth/jwt.strategy';
 import { AppController } from './app.controller';
 import { AuthController } from './auth/auth.controller';
@@ -18,7 +21,7 @@ import { SupabaseModule } from './supabase/supabase.module';
 @Module({
   imports: [
     ThrottlerModule.forRoot(throttlerOptions),
-    ConfigModule.forRoot({ isGlobal: true }),
+    ConfigModule.forRoot({ isGlobal: true, validate: validarEnv }),
     SupabaseModule,
     UsersModule,
     AuthModule,
@@ -26,6 +29,8 @@ import { SupabaseModule } from './supabase/supabase.module';
   controllers: [AppController, AuthController, ProductController],
   providers: [AppService, AuthService, SupabaseService, JwtStrategy, ProductService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
+    { provide: APP_GUARD, useClass: OriginGuard },
+    { provide: APP_FILTER, useClass: AllExceptionsFilter },
   ],
 })
 export class AppModule {}
