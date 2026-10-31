@@ -37,7 +37,7 @@ export class ProductController {
     constructor(private readonly productService: ProductService) { }
 
     @ApiOperation({ summary: 'Listar catálogo', description: 'Público. Apenas produtos com `status = true`, do mais novo para o mais antigo, com suas imagens.' })
-    @ApiSucesso(200, 'Traz `produtos: [{ ..., produto_imagens: [{ id, url_path, url_publica }] }]` e `podeAtualizarUI`.')
+    @ApiSucesso(200, 'Traz `produtos: [{ ..., categoria, produto_imagens: [{ id, url_path, url_publica }] }]` e `podeAtualizarUI`. `categoria` é o nome da categoria, ou `null` se o produto não tem categoria ou ela está desativada.')
     @ApiErros(429, 500)
     @Get('listagem')
     async listProducts() {
@@ -48,7 +48,7 @@ export class ProductController {
         });
     }
 
-    @ApiOperation({ summary: 'Criar produto', description: 'Requer login com nível 0 ou 1. Envio em multipart/form-data.' })
+    @ApiOperation({ summary: 'Criar produto', description: 'Requer login com nível 0 ou 1. Envio em multipart/form-data. `categoriaID` é opcional (categoria ativa; inexistente ou desativada → 400).' })
     @ApiCookieAuth('cookie')
     @ApiConsumes('multipart/form-data')
     @ApiBody(corpoMultipart(CreateProductDto))
@@ -68,7 +68,7 @@ export class ProductController {
         return ok('Produto criado com sucesso.', produto);
     }
 
-    @ApiOperation({ summary: 'Atualizar produto', description: 'Requer nível 0 ou 1. Imagens atuais que não estiverem em `imagensExistentes` são apagadas; arquivos em `imagens` são acrescentados.' })
+    @ApiOperation({ summary: 'Atualizar produto', description: 'Requer nível 0 ou 1. Imagens atuais que não estiverem em `imagensExistentes` são apagadas; arquivos em `imagens` são acrescentados. `categoriaID`: ausente mantém a categoria; vazio remove; UUID de categoria ativa troca (inexistente ou desativada → 400).' })
     @ApiCookieAuth('cookie')
     @ApiParam({ name: 'id', format: 'uuid' })
     @ApiConsumes('multipart/form-data')

@@ -65,6 +65,7 @@ export const MSG = {
   CATEGORIA_INVALIDA: 'Categoria informada não existe.',
   CATEGORIA_DUPLICADA: 'Já existe uma categoria com esse nome.',
   CATEGORIA_NAO_ENCONTRADA: 'Categoria não encontrada.',
+  CATEGORIA_VALIDAR_FALHOU: 'Erro ao validar a categoria.',
 } as const;
 
 // Erros que qualquer rota pode devolver, com o significado de cada um.

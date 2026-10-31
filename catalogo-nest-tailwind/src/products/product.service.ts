@@ -1,4 +1,4 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
 import { validarImagens } from './image-validation';
@@ -8,11 +8,29 @@ import { MSG } from '../common/respostas';
 export class ProductService {
   constructor(private supabaseService: SupabaseService) { }
 
+  // Garante que a categoria existe e está ativa; senão 400.
+  private async validarCategoria(categoriaID: string) {
+    const { data, error } = await this.supabaseService.client
+      .from('categorias')
+      .select('id')
+      .eq('id', categoriaID)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Erro ao validar categoria:', error.message);
+      throw new InternalServerErrorException(MSG.CATEGORIA_VALIDAR_FALHOU);
+    }
+    if (!data) throw new BadRequestException(MSG.CATEGORIA_INVALIDA);
+  }
+
   async getProductsWithImages() {
     const { data, error } = await this.supabaseService.client
       .from('produtos')
       .select(`
-          *,
+          id, nome, descricao, preco, preco_antigo, promocao, quantidade, status,
+          created_at, updated_at, created_by, updated_by,
+          categorias ( nome, ativo ),
           produto_imagens (
             id,
             url_path
@@ -23,8 +41,10 @@ export class ProductService {
 
     if (error) throw error;
 
-    return data.map((produto) => ({
+    return data.map(({ categorias, ...produto }: any) => ({
       ...produto,
+      // só o nome; categoria desativada ou ausente vira null
+      categoria: categorias?.ativo ? categorias.nome : null,
       produto_imagens: produto.produto_imagens.map((img) => ({
         ...img,
         url_publica: img.url_path,
@@ -36,6 +56,8 @@ export class ProductService {
     // Confere o conteúdo real dos arquivos antes de gravar qualquer coisa
     const tipos = validarImagens(files);
 
+    if (productData.categoriaID) await this.validarCategoria(productData.categoriaID);
+
     const { data: product, error: pError } = await this.supabaseService.client
       .from('produtos')
       .insert([{
@@ -43,6 +65,7 @@ export class ProductService {
         descricao: productData.descricao,
         preco: productData.preco,
         status: true,
+        ...(productData.categoriaID ? { categoriaID: productData.categoriaID } : {}),
         created_by: userId,
         updated_by: userId
       }])
@@ -122,6 +145,9 @@ export class ProductService {
   async updateProductWithImages(id: string, productData: UpdateProductDto, files: Array<Express.Multer.File>, urlsParaManter: string[], userId: string) {
     const tipos = validarImagens(files);
 
+    // undefined mantém a categoria; null (campo vazio) remove; UUID troca
+    if (productData.categoriaID) await this.validarCategoria(productData.categoriaID);
+
     // 1. Atualiza os dados do produto
     const { error: updateError } = await this.supabaseService.client.from('produtos').update({
       nome: productData.nome,
@@ -129,6 +155,7 @@ export class ProductService {
       preco: productData.preco,
       preco_antigo: productData.preco_antigo ?? null,
       promocao: productData.promocao === true,
+      ...(productData.categoriaID !== undefined ? { categoriaID: productData.categoriaID } : {}),
       updated_by: userId
     }).eq('id', id);
 
