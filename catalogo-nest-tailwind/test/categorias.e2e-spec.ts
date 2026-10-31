@@ -159,3 +159,49 @@ describe('GET /categorias/:id/exclusao (e2e)', () => {
     await request(app.getHttpServer()).get('/api/categorias/abc/exclusao').set('x-nivel', '1').expect(400);
   });
 });
+
+describe('DELETE /categorias/:id (e2e)', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+  let app: NestExpressApplication;
+  let fake: ReturnType<typeof clienteFalso>;
+
+  const excluir = (nivel?: number) => {
+    const req = request(app.getHttpServer()).delete(`/api/categorias/${ID}`);
+    if (nivel !== undefined) req.set('x-nivel', String(nivel));
+    return req;
+  };
+
+  beforeEach(async () => {
+    fake = clienteFalso({ data: { id: ID, nome: 'Mesa' }, count: 3 });
+    app = await criarApp(fake.client);
+  });
+
+  afterEach(() => app.close());
+
+  it('exclui a categoria, informa os produtos afetados e não toca em produtos', async () => {
+    const res = await excluir(1).expect(200);
+    expect(res.body).toMatchObject({ success: true, categoria: { id: ID, nome: 'Mesa' }, produtosAfetados: 3 });
+    expect(fake.qb.delete).toHaveBeenCalledTimes(1);
+    // o delete é o último passo e só na tabela categorias; produtos é apenas consultado (a FK faz set null)
+    expect(fake.client.from.mock.calls.at(-1)?.[0]).toBe('categorias');
+  });
+
+  it('inexistente → 404 sem apagar', async () => {
+    await app.close();
+    fake = clienteFalso({ data: null });
+    app = await criarApp(fake.client);
+    await excluir(1).expect(404);
+    expect(fake.qb.delete).not.toHaveBeenCalled();
+  });
+
+  it('não admin → 403; sem login → 401', async () => {
+    await excluir(99).expect(403);
+    await excluir().expect(401);
+    expect(fake.qb.delete).not.toHaveBeenCalled();
+  });
+
+  it('OriginGuard cobre a rota: origem desconhecida → 403', async () => {
+    await excluir(1).set('Origin', 'https://evil.com').expect(403);
+    expect(fake.qb.delete).not.toHaveBeenCalled();
+  });
+});

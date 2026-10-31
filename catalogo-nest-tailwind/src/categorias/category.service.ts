@@ -74,4 +74,14 @@ export class CategoryService {
     if (error) throw error;
     return { categoria, produtosAfetados: count ?? 0 };
   }
+
+  // Os produtos NÃO são apagados: a FK "categoriaID" tem on delete set null, então só perdem a categoria.
+  async excluir(id: string) {
+    const resultado = await this.contarProdutos(id);
+
+    const { error } = await this.supabaseService.client.from('categorias').delete().eq('id', id);
+    if (error) throw error;
+
+    return resultado;
+  }
 }

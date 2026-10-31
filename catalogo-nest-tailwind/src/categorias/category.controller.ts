@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
 import { ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CategoryService } from './category.service';
@@ -61,5 +61,19 @@ export class CategoryController {
   async alterar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCategoryDto) {
     const categoria = await this.categoryService.alterar(id, dto);
     return ok('Categoria atualizada com sucesso.', { categoria });
+  }
+
+  @ApiOperation({ summary: 'Excluir categoria', description: 'Requer nível 0 ou 1. Os produtos da categoria não são apagados: ficam sem categoria. Use `GET /categorias/:id/exclusao` antes, para confirmar.' })
+  @ApiCookieAuth('cookie')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiSucesso(200, 'Categoria excluída. Traz `categoria: { id, nome }` e `produtosAfetados` (quantos produtos ficaram sem categoria).')
+  @ApiErros(400, 401, 403, 404, 429)
+  @Delete(':id')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+  async excluir(@Param('id', ParseUUIDPipe) id: string) {
+    const resultado = await this.categoryService.excluir(id);
+    return ok('Categoria excluída com sucesso.', resultado);
   }
 }

@@ -167,3 +167,39 @@ describe('CategoryService.contarProdutos', () => {
     await expect(new CategoryService(supabase).contarProdutos(ID)).rejects.toBe(erro);
   });
 });
+
+describe('CategoryService.excluir', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+
+  it('apaga só a categoria e devolve a contagem de produtos afetados', async () => {
+    const qbCat: any = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: { id: ID, nome: 'Mesa' }, error: null }),
+      delete: jest.fn().mockReturnThis(),
+    };
+    // delete().eq() resolve; select().eq().maybeSingle() é a checagem de existência
+    qbCat.eq.mockImplementationOnce(() => qbCat).mockImplementationOnce(() => Promise.resolve({ error: null }));
+    const qbProd: any = { select: jest.fn().mockReturnThis(), eq: jest.fn().mockResolvedValue({ count: 2, error: null }) };
+    const from = jest.fn((t: string) => (t === 'categorias' ? qbCat : qbProd));
+
+    await expect(new CategoryService({ client: { from } } as any).excluir(ID)).resolves.toEqual({
+      categoria: { id: ID, nome: 'Mesa' },
+      produtosAfetados: 2,
+    });
+    expect(qbCat.delete).toHaveBeenCalled();
+    expect(qbProd.eq).toHaveBeenCalledWith('categoriaID', ID);
+  });
+
+  it('inexistente → 404 e nada é apagado', async () => {
+    const qbCat: any = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: null, error: null }),
+      delete: jest.fn(),
+    };
+    const supabase = { client: { from: jest.fn().mockReturnValue(qbCat) } } as any;
+    await expect(new CategoryService(supabase).excluir(ID)).rejects.toMatchObject({ status: 404 });
+    expect(qbCat.delete).not.toHaveBeenCalled();
+  });
+});
