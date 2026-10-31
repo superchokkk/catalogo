@@ -119,3 +119,43 @@ describe('PUT /categorias/:id (e2e)', () => {
     expect(fake.qb.update).not.toHaveBeenCalled();
   });
 });
+
+describe('GET /categorias/:id/exclusao (e2e)', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+  let app: NestExpressApplication;
+  let fake: ReturnType<typeof clienteFalso>;
+
+  const confirmar = (nivel?: number) => {
+    const req = request(app.getHttpServer()).get(`/api/categorias/${ID}/exclusao`);
+    if (nivel !== undefined) req.set('x-nivel', String(nivel));
+    return req;
+  };
+
+  beforeEach(async () => {
+    fake = clienteFalso({ data: { id: ID, nome: 'Mesa' }, count: 3 });
+    app = await criarApp(fake.client);
+  });
+
+  afterEach(() => app.close());
+
+  it('devolve a categoria e a contagem sem alterar nada', async () => {
+    const res = await confirmar(1).expect(200);
+    expect(res.body).toMatchObject({ success: true, categoria: { id: ID, nome: 'Mesa' }, produtosAfetados: 3 });
+    expect(fake.qb.update).not.toHaveBeenCalled();
+    expect(fake.qb.delete).not.toHaveBeenCalled();
+    expect(fake.qb.insert).not.toHaveBeenCalled();
+  });
+
+  it('inexistente → 404', async () => {
+    await app.close();
+    fake = clienteFalso({ data: null });
+    app = await criarApp(fake.client);
+    await confirmar(1).expect(404);
+  });
+
+  it('não admin → 403; sem login → 401; id inválido → 400', async () => {
+    await confirmar(99).expect(403);
+    await confirmar().expect(401);
+    await request(app.getHttpServer()).get('/api/categorias/abc/exclusao').set('x-nivel', '1').expect(400);
+  });
+});

@@ -36,6 +36,19 @@ export class CategoryController {
     return ok('Categoria criada com sucesso.', { categoria });
   }
 
+  @ApiOperation({ summary: 'Confirmar exclusão de categoria', description: 'Requer nível 0 ou 1. Só leitura: informa quantos produtos ficariam sem categoria se ela fosse excluída.' })
+  @ApiCookieAuth('cookie')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiSucesso(200, 'Traz `categoria: { id, nome }` e `produtosAfetados`.')
+  @ApiErros(400, 401, 403, 404, 429)
+  @Get(':id/exclusao')
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+  async confirmarExclusao(@Param('id', ParseUUIDPipe) id: string) {
+    const resultado = await this.categoryService.contarProdutos(id);
+    return ok('Confirme a exclusão da categoria.', resultado);
+  }
+
   @ApiOperation({ summary: 'Atualizar categoria', description: 'Requer nível 0 ou 1. Campos omitidos são mantidos. O nome é salvo em minúsculas com a inicial maiúscula.' })
   @ApiCookieAuth('cookie')
   @ApiParam({ name: 'id', format: 'uuid' })

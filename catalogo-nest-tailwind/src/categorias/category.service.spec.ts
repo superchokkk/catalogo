@@ -122,3 +122,48 @@ describe('CategoryService.alterar', () => {
     await expect(new CategoryService(supabase).alterar(ID, { nome: 'x' })).rejects.toMatchObject({ status: 409 });
   });
 });
+
+describe('CategoryService.contarProdutos', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+
+  // Primeira consulta (categorias) termina em maybeSingle; a segunda (produtos) em eq, com count.
+  function clienteContagem(categoria: any, contagem: { count: number | null; error: any }) {
+    const qbCat: any = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue({ data: categoria, error: null }),
+    };
+    const qbProd: any = {
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockResolvedValue(contagem),
+    };
+    const from = jest.fn((t: string) => (t === 'categorias' ? qbCat : qbProd));
+    return { qbProd, supabase: { client: { from } } as any };
+  }
+
+  it('devolve a categoria e a contagem de produtos pela coluna categoriaID', async () => {
+    const categoria = { id: ID, nome: 'Mesa' };
+    const { qbProd, supabase } = clienteContagem(categoria, { count: 3, error: null });
+
+    await expect(new CategoryService(supabase).contarProdutos(ID)).resolves.toEqual({ categoria, produtosAfetados: 3 });
+    expect(qbProd.select).toHaveBeenCalledWith('id', { count: 'exact', head: true });
+    expect(qbProd.eq).toHaveBeenCalledWith('categoriaID', ID);
+  });
+
+  it('count nulo vira 0', async () => {
+    const { supabase } = clienteContagem({ id: ID, nome: 'Mesa' }, { count: null, error: null });
+    await expect(new CategoryService(supabase).contarProdutos(ID)).resolves.toMatchObject({ produtosAfetados: 0 });
+  });
+
+  it('categoria inexistente → 404, sem contar produtos', async () => {
+    const { qbProd, supabase } = clienteContagem(null, { count: 0, error: null });
+    await expect(new CategoryService(supabase).contarProdutos(ID)).rejects.toMatchObject({ status: 404 });
+    expect(qbProd.select).not.toHaveBeenCalled();
+  });
+
+  it('propaga erro da contagem', async () => {
+    const erro = { message: 'falhou' };
+    const { supabase } = clienteContagem({ id: ID, nome: 'Mesa' }, { count: null, error: erro });
+    await expect(new CategoryService(supabase).contarProdutos(ID)).rejects.toBe(erro);
+  });
+});

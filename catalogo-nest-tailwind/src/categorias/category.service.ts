@@ -54,4 +54,24 @@ export class CategoryService {
     if (!data) throw new NotFoundException(MSG.CATEGORIA_NAO_ENCONTRADA);
     return data;
   }
+
+  // Confirmação antes de excluir: quantos produtos perderiam a categoria. Não altera nada.
+  async contarProdutos(id: string) {
+    const { data: categoria, error: cError } = await this.supabaseService.client
+      .from('categorias')
+      .select('id, nome')
+      .eq('id', id)
+      .maybeSingle();
+
+    if (cError) throw cError;
+    if (!categoria) throw new NotFoundException(MSG.CATEGORIA_NAO_ENCONTRADA);
+
+    const { count, error } = await this.supabaseService.client
+      .from('produtos')
+      .select('id', { count: 'exact', head: true })
+      .eq('categoriaID', id);
+
+    if (error) throw error;
+    return { categoria, produtosAfetados: count ?? 0 };
+  }
 }
