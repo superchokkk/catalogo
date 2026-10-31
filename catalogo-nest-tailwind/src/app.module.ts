@@ -9,6 +9,8 @@ import { JwtStrategy } from './auth/jwt.strategy';
 import { AppController } from './app.controller';
 import { AuthController } from './auth/auth.controller';
 import { ProductController } from './products/product.controller';
+import { CategoryController } from './categorias/category.controller';
+import { CategoryService } from './categorias/category.service';
 import { AppService } from './app.service';
 import { AuthService } from './auth/auth.service';
 import { ProductService } from './products/product.service';
@@ -26,8 +28,8 @@ import { SupabaseModule } from './supabase/supabase.module';
     UsersModule,
     AuthModule,
   ],
-  controllers: [AppController, AuthController, ProductController],
-  providers: [AppService, AuthService, SupabaseService, JwtStrategy, ProductService,
+  controllers: [AppController, AuthController, ProductController, CategoryController],
+  providers: [AppService, AuthService, SupabaseService, JwtStrategy, ProductService, CategoryService,
     { provide: APP_GUARD, useClass: ThrottlerGuard },
     { provide: APP_GUARD, useClass: OriginGuard },
     { provide: APP_FILTER, useClass: AllExceptionsFilter },
