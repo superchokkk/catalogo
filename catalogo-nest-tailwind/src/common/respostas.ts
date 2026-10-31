@@ -62,6 +62,9 @@ export const MSG = {
   USUARIO_CRIAR_FALHOU: 'Não foi possível criar o usuário. Verifique os dados informados.',
   PRODUTO_ATUALIZAR_FALHOU: 'Erro ao atualizar produto.',
   PRODUTO_DELETAR_FALHOU: 'Erro ao deletar produto.',
+  CATEGORIA_INVALIDA: 'Categoria informada não existe.',
+  CATEGORIA_DUPLICADA: 'Já existe uma categoria com esse nome.',
+  CATEGORIA_NAO_ENCONTRADA: 'Categoria não encontrada.',
 } as const;
 
 // Erros que qualquer rota pode devolver, com o significado de cada um.
@@ -70,6 +73,7 @@ export const ERROS_PADRAO: Record<number, string> = {
   401: 'Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.',
   403: 'Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).',
   404: 'Rota ou recurso não encontrado.',
+  409: 'Conflito: o recurso já existe (ex.: nome de categoria repetido, sem diferenciar maiúsculas).',
   429: 'Limite de requisições excedido (rate limiting).',
   500: 'Erro interno. O detalhe fica só no log do servidor.',
 };
