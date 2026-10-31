@@ -1,8 +1,8 @@
-import { Body, Controller, Get, Post, Req, UseGuards } from '@nestjs/common';
-import { ApiCookieAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Body, Controller, Get, Param, ParseUUIDPipe, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { ApiCookieAuth, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
 import { CategoryService } from './category.service';
-import { CreateCategoryDto } from './category.dto';
+import { CreateCategoryDto, UpdateCategoryDto } from './category.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -34,5 +34,19 @@ export class CategoryController {
   async criar(@Body() dto: CreateCategoryDto, @Req() req: any) {
     const categoria = await this.categoryService.criar(dto, req.user.id);
     return ok('Categoria criada com sucesso.', { categoria });
+  }
+
+  @ApiOperation({ summary: 'Atualizar categoria', description: 'Requer nível 0 ou 1. Campos omitidos são mantidos. O nome é salvo em minúsculas com a inicial maiúscula.' })
+  @ApiCookieAuth('cookie')
+  @ApiParam({ name: 'id', format: 'uuid' })
+  @ApiSucesso(200, 'Categoria atualizada. Traz `categoria: { id, nome, ativo }`.')
+  @ApiErros(400, 401, 403, 404, 409, 429)
+  @Put(':id')
+  @Throttle({ default: { limit: 20, ttl: 60000 } })
+  @UseGuards(SupabaseAuthGuard, RolesGuard)
+  @Roles(Nivel.SUPER_ADMIN, Nivel.ADMIN)
+  async alterar(@Param('id', ParseUUIDPipe) id: string, @Body() dto: UpdateCategoryDto) {
+    const categoria = await this.categoryService.alterar(id, dto);
+    return ok('Categoria atualizada com sucesso.', { categoria });
   }
 }

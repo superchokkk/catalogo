@@ -1,7 +1,7 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { MSG } from '../common/respostas';
-import { CreateCategoryDto } from './category.dto';
+import { CreateCategoryDto, UpdateCategoryDto } from './category.dto';
 import { normalizarNome } from './normalizar-nome';
 
 // Código do Postgres para violação de índice único (nome repetido, sem diferenciar caixa).
@@ -34,6 +34,24 @@ export class CategoryService {
       if (error.code === UNIQUE_VIOLATION) throw new ConflictException(MSG.CATEGORIA_DUPLICADA);
       throw error;
     }
+    return data;
+  }
+
+  async alterar(id: string, dto: UpdateCategoryDto) {
+    const campos: { nome?: string; ativo?: boolean } = {};
+    if (dto.nome !== undefined) campos.nome = normalizarNome(dto.nome);
+    if (dto.ativo !== undefined) campos.ativo = dto.ativo;
+
+    const tabela = this.supabaseService.client.from('categorias');
+    // Corpo vazio: nada a gravar, só confirma que a categoria existe.
+    const consulta = Object.keys(campos).length > 0 ? tabela.update(campos) : tabela.select('id, nome, ativo');
+    const { data, error } = await consulta.eq('id', id).select('id, nome, ativo').maybeSingle();
+
+    if (error) {
+      if (error.code === UNIQUE_VIOLATION) throw new ConflictException(MSG.CATEGORIA_DUPLICADA);
+      throw error;
+    }
+    if (!data) throw new NotFoundException(MSG.CATEGORIA_NAO_ENCONTRADA);
     return data;
   }
 }

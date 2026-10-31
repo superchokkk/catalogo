@@ -74,3 +74,51 @@ describe('CategoryService.criar', () => {
     await expect(new CategoryService(supabase).criar({ nome: 'mesa' }, 'u')).rejects.toBe(erro);
   });
 });
+
+describe('CategoryService.alterar', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+
+  function clienteUpdate(resultado: { data: any; error: any }) {
+    const qb: any = {
+      update: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      eq: jest.fn().mockReturnThis(),
+      maybeSingle: jest.fn().mockResolvedValue(resultado),
+    };
+    return { qb, supabase: { client: { from: jest.fn().mockReturnValue(qb) } } as any };
+  }
+
+  it('normaliza o nome e grava só os campos enviados', async () => {
+    const atual = { id: ID, nome: 'Mesa', ativo: true };
+    const { qb, supabase } = clienteUpdate({ data: atual, error: null });
+
+    await expect(new CategoryService(supabase).alterar(ID, { nome: 'MESA' })).resolves.toEqual(atual);
+    expect(qb.update).toHaveBeenCalledWith({ nome: 'Mesa' });
+    expect(qb.eq).toHaveBeenCalledWith('id', ID);
+  });
+
+  it('atualiza só ativo sem mexer no nome', async () => {
+    const { qb, supabase } = clienteUpdate({ data: {}, error: null });
+    await new CategoryService(supabase).alterar(ID, { ativo: false });
+    expect(qb.update).toHaveBeenCalledWith({ ativo: false });
+  });
+
+  it('corpo vazio não faz update, só confirma a existência', async () => {
+    const { qb, supabase } = clienteUpdate({ data: { id: ID }, error: null });
+    await new CategoryService(supabase).alterar(ID, {});
+    expect(qb.update).not.toHaveBeenCalled();
+  });
+
+  it('categoria inexistente → 404', async () => {
+    const { supabase } = clienteUpdate({ data: null, error: null });
+    await expect(new CategoryService(supabase).alterar(ID, { nome: 'x' })).rejects.toMatchObject({
+      status: 404,
+      message: MSG.CATEGORIA_NAO_ENCONTRADA,
+    });
+  });
+
+  it('nome repetido (23505) → 409', async () => {
+    const { supabase } = clienteUpdate({ data: null, error: { code: '23505' } });
+    await expect(new CategoryService(supabase).alterar(ID, { nome: 'x' })).rejects.toMatchObject({ status: 409 });
+  });
+});
