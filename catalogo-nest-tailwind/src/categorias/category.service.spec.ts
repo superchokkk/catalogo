@@ -1,4 +1,5 @@
 import { CategoryService } from './category.service';
+import { MSG } from '../common/respostas';
 
 // Encadeamento do query builder do Supabase: cada método devolve o próprio objeto
 // e o último (`order`) resolve com o resultado.
@@ -32,5 +33,44 @@ describe('CategoryService.listarAtivas', () => {
     const erro = { message: 'falhou' };
     const { supabase } = clienteFalso({ data: null, error: erro });
     await expect(new CategoryService(supabase).listarAtivas()).rejects.toBe(erro);
+  });
+});
+
+describe('CategoryService.criar', () => {
+  function clienteInsert(resultado: { data: any; error: any }) {
+    const qb: any = {
+      insert: jest.fn().mockReturnThis(),
+      select: jest.fn().mockReturnThis(),
+      single: jest.fn().mockResolvedValue(resultado),
+    };
+    return { qb, supabase: { client: { from: jest.fn().mockReturnValue(qb) } } as any };
+  }
+
+  it('grava o nome normalizado, ativo por padrão e o autor', async () => {
+    const criada = { id: '1', nome: 'Cadeira gamer', ativo: true };
+    const { qb, supabase } = clienteInsert({ data: criada, error: null });
+
+    await expect(new CategoryService(supabase).criar({ nome: 'CADEIRA gamer' }, 'user-1')).resolves.toEqual(criada);
+    expect(qb.insert).toHaveBeenCalledWith([{ nome: 'Cadeira gamer', ativo: true, created_by: 'user-1' }]);
+  });
+
+  it('respeita ativo: false', async () => {
+    const { qb, supabase } = clienteInsert({ data: {}, error: null });
+    await new CategoryService(supabase).criar({ nome: 'mesa', ativo: false }, 'user-1');
+    expect(qb.insert).toHaveBeenCalledWith([{ nome: 'Mesa', ativo: false, created_by: 'user-1' }]);
+  });
+
+  it('traduz 23505 em 409 com a mensagem padrão', async () => {
+    const { supabase } = clienteInsert({ data: null, error: { code: '23505', message: 'duplicate' } });
+    await expect(new CategoryService(supabase).criar({ nome: 'mesa' }, 'u')).rejects.toMatchObject({
+      status: 409,
+      message: MSG.CATEGORIA_DUPLICADA,
+    });
+  });
+
+  it('propaga outros erros do banco', async () => {
+    const erro = { code: 'XX000', message: 'falhou' };
+    const { supabase } = clienteInsert({ data: null, error: erro });
+    await expect(new CategoryService(supabase).criar({ nome: 'mesa' }, 'u')).rejects.toBe(erro);
   });
 });
