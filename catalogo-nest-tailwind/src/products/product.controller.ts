@@ -1,4 +1,4 @@
-import { Controller, Get, Post, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
+import { Controller, Get, Query, Post, UseInterceptors, Body, UploadedFiles, UseGuards, Req, Put, Param, Delete, ParseUUIDPipe } from '@nestjs/common';
 import { ApiBody, ApiConsumes, ApiCookieAuth, ApiExtraModels, ApiOperation, ApiParam, ApiTags } from '@nestjs/swagger';
 import { ProductService } from './product.service';
 import { FilesInterceptor } from '@nestjs/platform-express';
@@ -7,6 +7,7 @@ import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { Nivel } from '../auth/nivel.enum';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
+import { ListProductsQueryDto } from './list-products-query.dto';
 import { MAX_IMAGENS, opcoesUploadImagem } from './image-validation';
 import { ApiErros, ApiSucesso, ok } from '../common/respostas';
 
@@ -36,14 +37,18 @@ const corpoMultipart = (dto: Function) => ({
 export class ProductController {
     constructor(private readonly productService: ProductService) { }
 
-    @ApiOperation({ summary: 'Listar catálogo', description: 'Público. Apenas produtos com `status = true`, do mais novo para o mais antigo, com suas imagens.' })
-    @ApiSucesso(200, 'Traz `produtos: [{ ..., categoria, produto_imagens: [{ id, url_path, url_publica }] }]` e `podeAtualizarUI`. `categoria` é o nome da categoria, ou `null` se o produto não tem categoria ou ela está desativada.')
-    @ApiErros(429, 500)
+    @ApiOperation({ summary: 'Listar catálogo', description: 'Público. Apenas produtos com `status = true`, com suas imagens. Filtro opcional por `categoria` (UUID), ordenação por `ordenar` (`preco`, `nome`, `created_at`; padrão `created_at`) e `direcao` (`asc`/`desc`; padrão `desc`), paginada por `pagina` (padrão 1) e `limite` (padrão 20, máximo 50).' })
+    @ApiSucesso(200, 'Traz `produtos: [{ ..., categoria, produto_imagens: [{ id, url_path, url_publica }] }]` `total`, `pagina`, `limite`, `totalPaginas` e `podeAtualizarUI`. Página além do fim devolve `produtos: []`. `categoria` é o nome da categoria, ou `null` se o produto não tem categoria ou ela está desativada.')
+    @ApiErros(400, 429, 500)
     @Get('listagem')
-    async listProducts() {
-        const produtos = await this.productService.getProductsWithImages();
+    async listProducts(@Query() query: ListProductsQueryDto) {
+        const { produtos, total } = await this.productService.getProductsWithImages(query);
         return ok('Catálogo carregado com sucesso.', {
             produtos,
+            total,
+            pagina: query.pagina,
+            limite: query.limite,
+            totalPaginas: Math.ceil(total / query.limite),
             podeAtualizarUI: true, // or derive this from business logic
         });
     }

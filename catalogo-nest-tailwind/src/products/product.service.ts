@@ -3,6 +3,14 @@ import { SupabaseService } from '../supabase/supabase.service';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
 import { validarImagens } from './image-validation';
 import { MSG } from '../common/respostas';
+import { ListProductsQueryDto } from './list-products-query.dto';
+
+// Allowlist -> coluna real. O texto do cliente nunca vai direto para o .order().
+const ORDENACAO = {
+  preco: 'preco',
+  nome: 'nome',
+  created_at: 'created_at',
+} as const;
 
 @Injectable()
 export class ProductService {
@@ -24,8 +32,12 @@ export class ProductService {
     if (!data) throw new BadRequestException(MSG.CATEGORIA_INVALIDA);
   }
 
-  async getProductsWithImages() {
-    const { data, error } = await this.supabaseService.client
+  async getProductsWithImages(query: ListProductsQueryDto) {
+    const { categoria, ordenar, direcao, pagina, limite } = query;
+    const inicio = (pagina - 1) * limite;
+    const fim = inicio + limite - 1;
+
+    let consulta = this.supabaseService.client
       .from('produtos')
       .select(`
           id, nome, descricao, preco, preco_antigo, promocao, quantidade, status,
@@ -35,13 +47,23 @@ export class ProductService {
             id,
             url_path
           )
-        `)
-      .eq('status', true)
-      .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+      .eq('status', true);
 
+    if (categoria) consulta = consulta.eq('categoriaID', categoria);
+
+    const { data, error, count } = await consulta
+      .order(ORDENACAO[ordenar ?? 'created_at'], { ascending: direcao === 'asc' })
+      .order('id', { ascending: true }) // desempate: ordem estável entre páginas
+      .range(inicio, fim);
+
+    // Página além do fim: o PostgREST responde 416 (PGRST103). Vira lista vazia com o total correto.
+    if (error?.code === 'PGRST103') {
+      return { produtos: [], total: await this.contarProdutos(categoria) };
+    }
     if (error) throw error;
 
-    return data.map(({ categorias, ...produto }: any) => ({
+    const produtos = data.map(({ categorias, ...produto }: any) => ({
       ...produto,
       // só o nome; categoria desativada ou ausente vira null
       categoria: categorias?.ativo ? categorias.nome : null,
@@ -50,6 +72,19 @@ export class ProductService {
         url_publica: img.url_path,
       })),
     }));
+
+    return { produtos, total: count ?? 0 };
+  }
+
+  private async contarProdutos(categoria?: string) {
+    let consulta = this.supabaseService.client
+      .from('produtos')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', true);
+    if (categoria) consulta = consulta.eq('categoriaID', categoria);
+    const { count, error } = await consulta;
+    if (error) throw error;
+    return count ?? 0;
   }
 
   async createProductWithImages(productData: CreateProductDto, files: Array<Express.Multer.File>, userId: string) {

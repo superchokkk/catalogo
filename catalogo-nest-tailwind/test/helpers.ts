@@ -10,7 +10,7 @@ import { SupabaseAuthGuard } from './../src/auth/supabase-auth.guard';
 export function clienteFalso(resultado: { data?: any; error?: any; count?: number | null } = {}) {
   const res = { data: null, error: null, count: null, ...resultado };
   const qb: any = {};
-  for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'order', 'single', 'maybeSingle']) {
+  for (const m of ['select', 'insert', 'update', 'delete', 'eq', 'order', 'single', 'maybeSingle', 'range']) {
     qb[m] = jest.fn().mockReturnValue(qb);
   }
   qb.then = (ok: any, ko: any) => Promise.resolve(res).then(ok, ko);

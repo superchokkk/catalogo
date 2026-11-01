@@ -31,12 +31,23 @@ describe('Swagger (e2e)', () => {
         '/api/produtos/listagem',
         '/api/produtos/criar',
         '/api/produtos/{id}',
+        '/api/categorias',
+        '/api/categorias/{id}',
+        '/api/categorias/{id}/exclusao',
       ]),
     );
     expect(body.components.schemas).toEqual(
-      expect.objectContaining({ LoginDto: expect.anything(), CreateProductDto: expect.anything(), RespostaErroDto: expect.anything(), RespostaSucessoDto: expect.anything(), UpdateProductDto: expect.anything() }),
+      expect.objectContaining({ LoginDto: expect.anything(), CreateProductDto: expect.anything(), RespostaErroDto: expect.anything(), RespostaSucessoDto: expect.anything(), UpdateProductDto: expect.anything(), CreateCategoryDto: expect.anything(), UpdateCategoryDto: expect.anything() }),
     );
     expect(body.components.securitySchemes.cookie).toMatchObject({ in: 'cookie', name: 'access_token' });
+  });
+
+  it('documenta os parâmetros da listagem e o categoriaID de criar/editar', async () => {
+    const { body } = await request(app.getHttpServer()).get('/docs-json').expect(200);
+    const params = body.paths['/api/produtos/listagem'].get.parameters.map((p: any) => p.name);
+    expect(params).toEqual(expect.arrayContaining(['categoria', 'ordenar', 'direcao', 'pagina', 'limite']));
+    expect(body.components.schemas.CreateProductDto.properties).toHaveProperty('categoriaID');
+    expect(body.components.schemas.UpdateProductDto.properties).toHaveProperty('categoriaID');
   });
 
   it('serve a interface em /docs', async () => {

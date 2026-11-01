@@ -129,3 +129,99 @@ describe('GET /produtos/listagem com categoria (e2e)', () => {
     expect(fake.qb.select.mock.calls[0][0]).not.toMatch(/\*|categoriaID/);
   });
 });
+
+describe('GET /produtos/listagem filtro, ordenação e paginação (e2e)', () => {
+  let app: NestExpressApplication;
+  let fake: ReturnType<typeof clienteFalso>;
+  const linha = (id: string) => ({ id, nome: id, categorias: null, produto_imagens: [] });
+
+  const subir = async (resultado: object) => {
+    fake = clienteFalso(resultado);
+    app = await criarApp(fake.client);
+  };
+  const listar = (q = '') => request(app.getHttpServer()).get(`/api/produtos/listagem${q}`);
+
+  afterEach(() => app.close());
+
+  it('sem parâmetros: página 1, limite 20 e metadados', async () => {
+    await subir({ data: [linha('a')], count: 41 });
+    const res = await listar().expect(200);
+    expect(res.body).toMatchObject({ total: 41, pagina: 1, limite: 20, totalPaginas: 3, podeAtualizarUI: true });
+    expect(fake.qb.range).toHaveBeenCalledWith(0, 19);
+    expect(fake.qb.order).toHaveBeenNthCalledWith(1, 'created_at', { ascending: false });
+    expect(fake.qb.order).toHaveBeenNthCalledWith(2, 'id', { ascending: true });
+  });
+
+  it('paginação calcula o intervalo', async () => {
+    await subir({ data: [], count: 100 });
+    const res = await listar('?pagina=3&limite=10').expect(200);
+    expect(fake.qb.range).toHaveBeenCalledWith(20, 29);
+    expect(res.body).toMatchObject({ pagina: 3, limite: 10, totalPaginas: 10 });
+  });
+
+  it('página além do fim: 200, lista vazia e total correto', async () => {
+    // 1ª consulta (com range) falha com 416; a 2ª (só contagem) responde o total
+    const fora = clienteFalso({ error: { code: 'PGRST103', message: 'Requested range not satisfiable' } });
+    const contagem = clienteFalso({ count: 5 });
+    fake = fora;
+    fora.client.from.mockReturnValueOnce(fora.qb).mockReturnValueOnce(contagem.qb);
+    app = await criarApp(fora.client);
+    const res = await listar('?pagina=9').expect(200);
+    expect(res.body).toMatchObject({ produtos: [], total: 5, pagina: 9, totalPaginas: 1 });
+  });
+
+  it('filtra por categoria', async () => {
+    await subir({ data: [linha('a')], count: 1 });
+    await listar(`?categoria=${CAT}`).expect(200);
+    expect(fake.qb.eq).toHaveBeenCalledWith('categoriaID', CAT);
+  });
+
+  it('sem categoria não filtra por categoriaID', async () => {
+    await subir({ data: [], count: 0 });
+    await listar().expect(200);
+    expect(fake.qb.eq).not.toHaveBeenCalledWith('categoriaID', expect.anything());
+  });
+
+  it('ordena por preço ascendente', async () => {
+    await subir({ data: [], count: 0 });
+    await listar('?ordenar=preco&direcao=asc').expect(200);
+    expect(fake.qb.order).toHaveBeenNthCalledWith(1, 'preco', { ascending: true });
+  });
+
+  it.each([
+    'categoria=abc',
+    'ordenar=created_by',
+    'direcao=cima',
+    'pagina=0',
+    'limite=0',
+    'limite=51',
+    'status=false',
+  ])('%s → 400 sem consultar o banco', async (q) => {
+    await subir({ data: [], count: 0 });
+    await listar(`?${q}`).expect(400);
+    expect(fake.client.from).not.toHaveBeenCalled();
+  });
+});
+
+describe('Autorização das rotas de produto com categoria (e2e)', () => {
+  let app: NestExpressApplication;
+  beforeEach(async () => {
+    app = await criarApp(clienteFalso({ data: [] }).client);
+  });
+  afterEach(() => app.close());
+
+  it('usuário comum (99) não cria nem edita produto → 403', async () => {
+    await request(app.getHttpServer()).post('/api/produtos/criar').set('x-nivel', '99').field('nome', 'A').field('preco', '1').field('categoriaID', CAT).expect(403);
+    await request(app.getHttpServer()).put(`/api/produtos/${PROD}`).set('x-nivel', '99').field('nome', 'A').field('preco', '1').expect(403);
+  });
+
+  it('listagem combina filtro, ordenação e paginação', async () => {
+    const fake = clienteFalso({ data: [], count: 0 });
+    await app.close();
+    app = await criarApp(fake.client);
+    await request(app.getHttpServer()).get(`/api/produtos/listagem?categoria=${CAT}&ordenar=nome&direcao=desc&pagina=2&limite=5`).expect(200);
+    expect(fake.qb.eq).toHaveBeenCalledWith('categoriaID', CAT);
+    expect(fake.qb.order).toHaveBeenNthCalledWith(1, 'nome', { ascending: false });
+    expect(fake.qb.range).toHaveBeenCalledWith(5, 9);
+  });
+});

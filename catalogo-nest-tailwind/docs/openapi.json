@@ -1,0 +1,1504 @@
+{
+  "openapi": "3.0.0",
+  "paths": {
+    "/api": {
+      "get": {
+        "operationId": "AppController_getHello",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "summary": "Status da API",
+        "tags": [
+          "Status"
+        ]
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "description": "Grava os cookies httpOnly `access_token` (~1 h) e `refresh_token` (30 dias, só em /api/auth/refresh). Limite: 5/min por IP e 5/15 min por e-mail.",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Login realizado. Além de `success`/`message`, traz `user: { id, nome, email, nivel }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Login",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/refresh": {
+      "post": {
+        "description": "Usa o cookie `refresh_token` e grava um novo par de cookies. Chamar ao receber 401.",
+        "operationId": "AuthController_refresh",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Sessão renovada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Renovar sessão",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "description": "Revoga a sessão no Supabase (melhor esforço) e limpa os cookies.",
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Logout realizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Logout",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/me": {
+      "get": {
+        "description": "Devolve o usuário do Supabase acrescido de `nivel` e `nome` (lidos de public.users). Único retorno que não usa o formato `success`/`message`: é o próprio objeto do usuário.",
+        "operationId": "AuthController_getMe",
+        "parameters": [],
+        "responses": {
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Usuário logado",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/esqueci-senha": {
+      "post": {
+        "description": "Envia o e-mail de recuperação. A resposta é sempre a mesma, exista ou não a conta. Limite: 3/min por IP e 3/15 min por e-mail.",
+        "operationId": "AuthController_esqueciSenha",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EsqueciSenhaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Mensagem genérica de que, se o e-mail existir, as instruções foram enviadas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Esqueci a senha",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/redefinir-senha": {
+      "post": {
+        "description": "Valida o código recebido por e-mail e troca a senha; as sessões abertas são revogadas.",
+        "operationId": "AuthController_redefinirSenha",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RedefinirSenhaDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Senha alterada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Redefinir senha com código (OTP)",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/auth/set-session": {
+      "post": {
+        "description": "Fluxo de recuperação por link: o front entrega o token do Supabase, a API o valida e grava os cookies.",
+        "operationId": "AuthController_setSession",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Sessão configurada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Gravar sessão a partir de um token",
+        "tags": [
+          "Autenticação"
+        ]
+      }
+    },
+    "/api/produtos/listagem": {
+      "get": {
+        "description": "Público. Apenas produtos com `status = true`, com suas imagens. Filtro opcional por `categoria` (UUID), ordenação por `ordenar` (`preco`, `nome`, `created_at`; padrão `created_at`) e `direcao` (`asc`/`desc`; padrão `desc`), paginada por `pagina` (padrão 1) e `limite` (padrão 20, máximo 50).",
+        "operationId": "ProductController_listProducts",
+        "parameters": [
+          {
+            "name": "categoria",
+            "required": false,
+            "in": "query",
+            "description": "Só produtos dessa categoria (id vindo de `GET /categorias`).",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "ordenar",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "created_at",
+              "example": "preco",
+              "type": "string",
+              "enum": [
+                "preco",
+                "nome",
+                "created_at"
+              ]
+            }
+          },
+          {
+            "name": "direcao",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "desc",
+              "example": "asc",
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
+            }
+          },
+          {
+            "name": "pagina",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "default": 1,
+              "example": 1,
+              "type": "number"
+            }
+          },
+          {
+            "name": "limite",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 20,
+              "example": 20,
+              "type": "number"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Traz `produtos: [{ ..., categoria, produto_imagens: [{ id, url_path, url_publica }] }]` `total`, `pagina`, `limite`, `totalPaginas` e `podeAtualizarUI`. Página além do fim devolve `produtos: []`. `categoria` é o nome da categoria, ou `null` se o produto não tem categoria ou ela está desativada.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno. O detalhe fica só no log do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar catálogo",
+        "tags": [
+          "Produtos"
+        ]
+      }
+    },
+    "/api/produtos/criar": {
+      "post": {
+        "description": "Requer login com nível 0 ou 1. Envio em multipart/form-data. `categoriaID` é opcional (categoria ativa; inexistente ou desativada → 400).",
+        "operationId": "ProductController_createProduct",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/CreateProductDto"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "imagens": {
+                        "type": "array",
+                        "maxItems": 10,
+                        "items": {
+                          "type": "string",
+                          "format": "binary"
+                        },
+                        "description": "JPEG, PNG, WebP ou GIF, até 5 MB cada (o tipo é conferido pelo conteúdo)."
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Produto criado. Os campos do produto (`id`, `nome`, `preco`...) vêm no mesmo nível de `success`/`message`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Criar produto",
+        "tags": [
+          "Produtos"
+        ]
+      }
+    },
+    "/api/produtos/{id}": {
+      "put": {
+        "description": "Requer nível 0 ou 1. Imagens atuais que não estiverem em `imagensExistentes` são apagadas; arquivos em `imagens` são acrescentados. `categoriaID`: ausente mantém a categoria; vazio remove; UUID de categoria ativa troca (inexistente ou desativada → 400).",
+        "operationId": "ProductController_updateProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "allOf": [
+                  {
+                    "$ref": "#/components/schemas/UpdateProductDto"
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "imagens": {
+                        "type": "array",
+                        "maxItems": 10,
+                        "items": {
+                          "type": "string",
+                          "format": "binary"
+                        },
+                        "description": "JPEG, PNG, WebP ou GIF, até 5 MB cada (o tipo é conferido pelo conteúdo)."
+                      }
+                    }
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Produto atualizado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Atualizar produto",
+        "tags": [
+          "Produtos"
+        ]
+      },
+      "delete": {
+        "description": "Requer nível 0 ou 1. Apaga o produto, as referências e os arquivos do storage.",
+        "operationId": "ProductController_deleteProduct",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Produto excluído.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Excluir produto",
+        "tags": [
+          "Produtos"
+        ]
+      }
+    },
+    "/api/categorias": {
+      "get": {
+        "description": "Público. Apenas categorias ativas, em ordem alfabética.",
+        "operationId": "CategoryController_listar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "Traz `categorias: [{ id, nome }]`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Erro interno. O detalhe fica só no log do servidor.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Listar categorias",
+        "tags": [
+          "Categorias"
+        ]
+      },
+      "post": {
+        "description": "Requer login com nível 0 ou 1. O nome é salvo em minúsculas com a inicial maiúscula; repetido (sem diferenciar caixa) → 409.",
+        "operationId": "CategoryController_criar",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Categoria criada. Traz `categoria: { id, nome, ativo }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito: o recurso já existe (ex.: nome de categoria repetido, sem diferenciar maiúsculas).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Criar categoria",
+        "tags": [
+          "Categorias"
+        ]
+      }
+    },
+    "/api/categorias/{id}/exclusao": {
+      "get": {
+        "description": "Requer nível 0 ou 1. Só leitura: informa quantos produtos ficariam sem categoria se ela fosse excluída.",
+        "operationId": "CategoryController_confirmarExclusao",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Traz `categoria: { id, nome }` e `produtosAfetados`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rota ou recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Confirmar exclusão de categoria",
+        "tags": [
+          "Categorias"
+        ]
+      }
+    },
+    "/api/categorias/{id}": {
+      "put": {
+        "description": "Requer nível 0 ou 1. Campos omitidos são mantidos. O nome é salvo em minúsculas com a inicial maiúscula.",
+        "operationId": "CategoryController_alterar",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCategoryDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Categoria atualizada. Traz `categoria: { id, nome, ativo }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rota ou recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflito: o recurso já existe (ex.: nome de categoria repetido, sem diferenciar maiúsculas).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Atualizar categoria",
+        "tags": [
+          "Categorias"
+        ]
+      },
+      "delete": {
+        "description": "Requer nível 0 ou 1. Os produtos da categoria não são apagados: ficam sem categoria. Use `GET /categorias/:id/exclusao` antes, para confirmar.",
+        "operationId": "CategoryController_excluir",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Categoria excluída. Traz `categoria: { id, nome }` e `produtosAfetados` (quantos produtos ficaram sem categoria).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Não autenticado: sem cookie, token inválido/expirado ou credenciais erradas.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Sem permissão: nível de acesso insuficiente ou origem não autorizada (CSRF).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Rota ou recurso não encontrado.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "cookie": []
+          }
+        ],
+        "summary": "Excluir categoria",
+        "tags": [
+          "Categorias"
+        ]
+      }
+    },
+    "/api/usuarios/criar": {
+      "post": {
+        "description": "Cadastro público: o usuário nasce com o nível de acesso padrão da tabela public.users. Limite: 5/min por IP e 5/15 min por e-mail.",
+        "operationId": "UserController_createUser",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Usuário criado. Além de `success`/`message`, traz `user: { id, nome, email }`.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaSucessoDto"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Dados inválidos (corpo, parâmetro ou arquivo). `message` pode ser uma lista, uma entrada por campo.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Limite de requisições excedido (rate limiting).",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RespostaErroDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Criar usuário",
+        "tags": [
+          "Usuários"
+        ]
+      }
+    }
+  },
+  "info": {
+    "title": "API do Catálogo",
+    "description": "API de catálogo de produtos (NestJS + Supabase). A autenticação é por cookie httpOnly `access_token`, gravado por `POST /auth/login`. Rotas que alteram dados só aceitam requisições vindas de origens autorizadas (FRONTEND_URL / CORS_ORIGINS).",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
+  "components": {
+    "securitySchemes": {
+      "cookie": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "access_token"
+      }
+    },
+    "schemas": {
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "admin@exemplo.com",
+            "maxLength": 100
+          },
+          "senha": {
+            "type": "string",
+            "example": "minha-senha-123",
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "senha"
+        ]
+      },
+      "RespostaSucessoDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": true
+          },
+          "message": {
+            "type": "string",
+            "example": "Operação realizada com sucesso."
+          }
+        },
+        "required": [
+          "success",
+          "message"
+        ]
+      },
+      "RespostaErroDto": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "example": false
+          },
+          "statusCode": {
+            "type": "number",
+            "example": 400
+          },
+          "message": {
+            "oneOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            ],
+            "example": "Descrição do erro.",
+            "description": "Texto, ou lista de textos (um por campo) nos erros de validação."
+          },
+          "error": {
+            "type": "string",
+            "example": "Bad Request",
+            "description": "Nome HTTP do status."
+          }
+        },
+        "required": [
+          "success",
+          "statusCode",
+          "message"
+        ]
+      },
+      "EsqueciSenhaDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "usuario@exemplo.com",
+            "maxLength": 100
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "RedefinirSenhaDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string",
+            "example": "usuario@exemplo.com"
+          },
+          "token": {
+            "type": "string",
+            "description": "Código (OTP) de 6 a 10 dígitos enviado por e-mail.",
+            "example": "123456"
+          },
+          "novaSenha": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          }
+        },
+        "required": [
+          "email",
+          "token",
+          "novaSenha"
+        ]
+      },
+      "SetSessionDto": {
+        "type": "object",
+        "properties": {
+          "access_token": {
+            "type": "string",
+            "description": "Access token (JWT) emitido pelo Supabase."
+          },
+          "refresh_token": {
+            "type": "string",
+            "description": "Se enviado, a sessão passa a poder ser renovada em /auth/refresh.",
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "access_token"
+        ]
+      },
+      "CreateProductDto": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "example": "Cadeira Gamer",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "preco": {
+            "type": "string",
+            "example": "1.299,90",
+            "description": "Número ou texto no formato BR/US. Entre 0 e 10.000.000."
+          },
+          "categoriaID": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Id de uma categoria ativa (`GET /categorias`). No criar, vazio = sem categoria. No PUT: ausente mantém a atual; vazio remove."
+          }
+        },
+        "required": [
+          "nome",
+          "preco"
+        ]
+      },
+      "UpdateProductDto": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "example": "Cadeira Gamer",
+            "minLength": 1,
+            "maxLength": 200
+          },
+          "descricao": {
+            "type": "string",
+            "maxLength": 5000
+          },
+          "preco": {
+            "type": "string",
+            "example": "1.299,90",
+            "description": "Número ou texto no formato BR/US. Entre 0 e 10.000.000."
+          },
+          "categoriaID": {
+            "type": "object",
+            "format": "uuid",
+            "nullable": true,
+            "description": "Id de uma categoria ativa (`GET /categorias`). No criar, vazio = sem categoria. No PUT: ausente mantém a atual; vazio remove."
+          },
+          "preco_antigo": {
+            "type": "string",
+            "example": "1.599,90",
+            "description": "Preço antes da promoção."
+          },
+          "promocao": {
+            "type": "string",
+            "enum": [
+              "true",
+              "false"
+            ],
+            "description": "Em multipart chega como texto."
+          },
+          "imagensExistentes": {
+            "type": "string",
+            "example": "[\"https://.../foto1.jpg\"]",
+            "description": "JSON (texto) com as URLs das imagens a manter; as demais são apagadas."
+          }
+        },
+        "required": [
+          "nome",
+          "preco"
+        ]
+      },
+      "CreateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "example": "Cadeiras",
+            "maxLength": 100,
+            "description": "Salvo com tudo em minúsculas e só a inicial maiúscula."
+          },
+          "ativo": {
+            "type": "boolean",
+            "example": true,
+            "default": true,
+            "description": "Categorias inativas somem do filtro público."
+          }
+        },
+        "required": [
+          "nome"
+        ]
+      },
+      "UpdateCategoryDto": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "example": "Mesas",
+            "maxLength": 100,
+            "description": "Salvo com tudo em minúsculas e só a inicial maiúscula."
+          },
+          "ativo": {
+            "type": "boolean",
+            "example": false
+          }
+        }
+      },
+      "CreateUserDto": {
+        "type": "object",
+        "properties": {
+          "nome": {
+            "type": "string",
+            "example": "Maria",
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string",
+            "example": "usuario@exemplo.com",
+            "maxLength": 100
+          },
+          "senha": {
+            "type": "string",
+            "minLength": 8,
+            "maxLength": 72
+          },
+          "confirmarSenha": {
+            "type": "string",
+            "description": "Deve ser igual a `senha`."
+          }
+        },
+        "required": [
+          "nome",
+          "email",
+          "senha",
+          "confirmarSenha"
+        ]
+      }
+    }
+  }
+}

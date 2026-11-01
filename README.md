@@ -90,10 +90,15 @@ Todas as rotas têm o prefixo `/api`.
 | POST | `/auth/redefinir-senha` | — | Define nova senha |
 | POST | `/auth/set-session` | — | Grava o cookie a partir de um token (fluxo de recuperação) |
 | POST | `/usuarios/criar` | público | Cria usuário (`nome`, `email`, `senha`, `confirmarSenha`); não faz login. Limite: 5/min por IP e 5/15 min por e-mail |
-| GET | `/produtos/listagem` | público | Lista produtos ativos com imagens |
-| POST | `/produtos/criar` | admin | Cria produto (multipart, campo `imagens` até 10 × 5 MB) |
-| PUT | `/produtos/:id` | admin | Atualiza produto e imagens |
+| GET | `/produtos/listagem` | público | Lista produtos ativos com imagens e `categoria` (nome). Query: `categoria` (UUID), `ordenar` (`preco`/`nome`/`created_at`), `direcao`, `pagina` (padrão 1), `limite` (padrão 20, máx. 50); devolve `total`, `pagina`, `limite`, `totalPaginas` |
+| POST | `/produtos/criar` | admin | Cria produto (multipart, campo `imagens` até 10 × 5 MB; `categoriaID` opcional) |
+| PUT | `/produtos/:id` | admin | Atualiza produto e imagens (`categoriaID`: ausente mantém, vazio remove) |
 | DELETE | `/produtos/:id` | admin | Remove produto e imagens |
+| GET | `/categorias` | público | Lista categorias ativas (`id`, `nome`) |
+| POST | `/categorias` | admin | Cria categoria (`nome`, `ativo?`); nome repetido → 409 |
+| PUT | `/categorias/:id` | admin | Altera `nome`/`ativo` |
+| GET | `/categorias/:id/exclusao` | admin | Confirmação: `produtosAfetados` (só leitura) |
+| DELETE | `/categorias/:id` | admin | Exclui a categoria; os produtos ficam sem categoria |
 
 ## Autenticação e autorização
 
@@ -122,7 +127,7 @@ O rate limiting (`@nestjs/throttler`, em memória) reduz abuso e força bruta, m
 
 ## Banco de dados e Storage (Supabase)
 
-Tabelas usadas: `users`, `produtos`, `produto_imagens`. Bucket de imagens: `produtos-fotos`.
+Tabelas usadas: `users`, `produtos`, `produto_imagens`, `categorias`. Bucket de imagens: `produtos-fotos`.
 
 ## Melhorias planejadas
 
