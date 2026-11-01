@@ -1,40 +1,97 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import { BadRequestException, Injectable, InternalServerErrorException } from '@nestjs/common';
 import { SupabaseService } from '../supabase/supabase.service';
 import { CreateProductDto, UpdateProductDto } from './product.dto';
 import { validarImagens } from './image-validation';
 import { MSG } from '../common/respostas';
+import { ListProductsQueryDto } from './list-products-query.dto';
+
+// Allowlist -> coluna real. O texto do cliente nunca vai direto para o .order().
+const ORDENACAO = {
+  preco: 'preco',
+  nome: 'nome',
+  created_at: 'created_at',
+} as const;
 
 @Injectable()
 export class ProductService {
   constructor(private supabaseService: SupabaseService) { }
 
-  async getProductsWithImages() {
+  // Garante que a categoria existe e está ativa; senão 400.
+  private async validarCategoria(categoriaID: string) {
     const { data, error } = await this.supabaseService.client
+      .from('categorias')
+      .select('id')
+      .eq('id', categoriaID)
+      .eq('ativo', true)
+      .maybeSingle();
+
+    if (error) {
+      console.error('Erro ao validar categoria:', error.message);
+      throw new InternalServerErrorException(MSG.CATEGORIA_VALIDAR_FALHOU);
+    }
+    if (!data) throw new BadRequestException(MSG.CATEGORIA_INVALIDA);
+  }
+
+  async getProductsWithImages(query: ListProductsQueryDto) {
+    const { categoria, ordenar, direcao, pagina, limite } = query;
+    const inicio = (pagina - 1) * limite;
+    const fim = inicio + limite - 1;
+
+    let consulta = this.supabaseService.client
       .from('produtos')
       .select(`
-          *,
+          id, nome, descricao, preco, preco_antigo, promocao, quantidade, status,
+          created_at, updated_at, created_by, updated_by,
+          categorias ( nome, ativo ),
           produto_imagens (
             id,
             url_path
           )
-        `)
-      .eq('status', true)
-      .order('created_at', { ascending: false });
+        `, { count: 'exact' })
+      .eq('status', true);
 
+    if (categoria) consulta = consulta.eq('categoriaID', categoria);
+
+    const { data, error, count } = await consulta
+      .order(ORDENACAO[ordenar ?? 'created_at'], { ascending: direcao === 'asc' })
+      .order('id', { ascending: true }) // desempate: ordem estável entre páginas
+      .range(inicio, fim);
+
+    // Página além do fim: o PostgREST responde 416 (PGRST103). Vira lista vazia com o total correto.
+    if (error?.code === 'PGRST103') {
+      return { produtos: [], total: await this.contarProdutos(categoria) };
+    }
     if (error) throw error;
 
-    return data.map((produto) => ({
+    const produtos = data.map(({ categorias, ...produto }: any) => ({
       ...produto,
+      // só o nome; categoria desativada ou ausente vira null
+      categoria: categorias?.ativo ? categorias.nome : null,
       produto_imagens: produto.produto_imagens.map((img) => ({
         ...img,
         url_publica: img.url_path,
       })),
     }));
+
+    return { produtos, total: count ?? 0 };
+  }
+
+  private async contarProdutos(categoria?: string) {
+    let consulta = this.supabaseService.client
+      .from('produtos')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', true);
+    if (categoria) consulta = consulta.eq('categoriaID', categoria);
+    const { count, error } = await consulta;
+    if (error) throw error;
+    return count ?? 0;
   }
 
   async createProductWithImages(productData: CreateProductDto, files: Array<Express.Multer.File>, userId: string) {
     // Confere o conteúdo real dos arquivos antes de gravar qualquer coisa
     const tipos = validarImagens(files);
+
+    if (productData.categoriaID) await this.validarCategoria(productData.categoriaID);
 
     const { data: product, error: pError } = await this.supabaseService.client
       .from('produtos')
@@ -43,6 +100,7 @@ export class ProductService {
         descricao: productData.descricao,
         preco: productData.preco,
         status: true,
+        ...(productData.categoriaID ? { categoriaID: productData.categoriaID } : {}),
         created_by: userId,
         updated_by: userId
       }])
@@ -122,6 +180,9 @@ export class ProductService {
   async updateProductWithImages(id: string, productData: UpdateProductDto, files: Array<Express.Multer.File>, urlsParaManter: string[], userId: string) {
     const tipos = validarImagens(files);
 
+    // undefined mantém a categoria; null (campo vazio) remove; UUID troca
+    if (productData.categoriaID) await this.validarCategoria(productData.categoriaID);
+
     // 1. Atualiza os dados do produto
     const { error: updateError } = await this.supabaseService.client.from('produtos').update({
       nome: productData.nome,
@@ -129,6 +190,7 @@ export class ProductService {
       preco: productData.preco,
       preco_antigo: productData.preco_antigo ?? null,
       promocao: productData.promocao === true,
+      ...(productData.categoriaID !== undefined ? { categoriaID: productData.categoriaID } : {}),
       updated_by: userId
     }).eq('id', id);
 

@@ -57,3 +57,30 @@ describe('UpdateProductDto', () => {
     expect(await erros(UpdateProductDto, { nome: 'A', preco: '10', promocao: 'talvez' })).toContain('promocao');
   });
 });
+
+describe('categoriaID', () => {
+  const ID = '3f2b8c1e-1d0a-4c55-9a43-6a1c1f6f0b11';
+  const base = { nome: 'A', preco: '10' };
+
+  it.each([CreateProductDto, UpdateProductDto])('%p: aceita UUID válido', async (cls) => {
+    const dto = plainToInstance(cls, { ...base, categoriaID: ID });
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.categoriaID).toBe(ID);
+  });
+
+  it.each([CreateProductDto, UpdateProductDto])('%p: rejeita UUID inválido', async (cls) => {
+    expect(await erros(cls, { ...base, categoriaID: 'abc' })).toContain('categoriaID');
+  });
+
+  it.each([CreateProductDto, UpdateProductDto])('%p: vazio vira null (sem categoria)', async (cls) => {
+    const dto = plainToInstance(cls, { ...base, categoriaID: '' });
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.categoriaID).toBeNull();
+  });
+
+  it.each([CreateProductDto, UpdateProductDto])('%p: ausente continua undefined', async (cls) => {
+    const dto = plainToInstance(cls, base);
+    expect(await validate(dto)).toHaveLength(0);
+    expect(dto.categoriaID).toBeUndefined();
+  });
+});

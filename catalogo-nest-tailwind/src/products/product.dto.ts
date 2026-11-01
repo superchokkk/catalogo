@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { ArrayMaxSize, IsArray, IsBoolean, IsNumber, IsOptional, IsString, MaxLength, Min, Max, MinLength } from 'class-validator';
+import { ArrayMaxSize, IsArray, IsBoolean, IsNumber, IsOptional, IsString, IsUUID, MaxLength, Min, Max, MinLength } from 'class-validator';
 
 // Aceita número ou texto no formato BR ("1.299,90", "19,90") ou US ("19.90").
 // Valor inválido vira NaN, que o @IsNumber rejeita.
@@ -33,6 +33,11 @@ const paraLista = ({ value }: { value: unknown }) => {
   }
 };
 
+// Multipart não envia null: texto vazio significa "sem categoria" e vira null.
+// Campo ausente continua undefined (no update, mantém a categoria atual).
+const categoriaVaziaViraNull = ({ value }: { value: unknown }) =>
+  value === '' || value === null ? null : value;
+
 const PRECO_MAXIMO = 10_000_000;
 
 export class CreateProductDto {
@@ -54,6 +59,16 @@ export class CreateProductDto {
   @Min(0, { message: 'O preço não pode ser negativo.' })
   @Max(PRECO_MAXIMO, { message: 'Preço acima do permitido.' })
   preco!: number;
+
+  @ApiPropertyOptional({
+    format: 'uuid',
+    nullable: true,
+    description: 'Id de uma categoria ativa (`GET /categorias`). No criar, vazio = sem categoria. No PUT: ausente mantém a atual; vazio remove.',
+  })
+  @IsOptional()
+  @Transform(categoriaVaziaViraNull)
+  @IsUUID(undefined, { message: 'Categoria inválida.' })
+  categoriaID?: string | null;
 }
 
 export class UpdateProductDto extends CreateProductDto {

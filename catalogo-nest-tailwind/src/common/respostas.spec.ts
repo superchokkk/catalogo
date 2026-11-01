@@ -1,6 +1,6 @@
-import { ArgumentsHost, BadRequestException, ForbiddenException, HttpException } from '@nestjs/common';
+import { ArgumentsHost, BadRequestException, ConflictException, ForbiddenException, HttpException } from '@nestjs/common';
 import { AllExceptionsFilter } from './all-exceptions.filter';
-import { corpoErro, ok } from './respostas';
+import { corpoErro, ERROS_PADRAO, MSG, ok } from './respostas';
 
 describe('ok', () => {
   it('monta success/message e espalha os dados ao lado', () => {
@@ -13,6 +13,12 @@ describe('corpoErro', () => {
   it('inclui error só quando informado', () => {
     expect(corpoErro(401, 'Não.')).toEqual({ success: false, statusCode: 401, message: 'Não.' });
     expect(corpoErro(404, 'Não.', 'Not Found')).toEqual({ success: false, statusCode: 404, message: 'Não.', error: 'Not Found' });
+  });
+});
+
+describe('ERROS_PADRAO', () => {
+  it('documenta o 409 usado pelas categorias', () => {
+    expect(ERROS_PADRAO[409]).toBeDefined();
   });
 });
 
@@ -31,6 +37,13 @@ describe('AllExceptionsFilter', () => {
     expect(executar(new ForbiddenException('Acesso negado.'))).toEqual({
       status: 403,
       corpo: { success: false, statusCode: 403, message: 'Acesso negado.', error: 'Forbidden' },
+    });
+  });
+
+  it('409 (categoria duplicada) vira o formato padrão com a mensagem de MSG', () => {
+    expect(executar(new ConflictException(MSG.CATEGORIA_DUPLICADA))).toEqual({
+      status: 409,
+      corpo: { success: false, statusCode: 409, message: MSG.CATEGORIA_DUPLICADA, error: 'Conflict' },
     });
   });
 
