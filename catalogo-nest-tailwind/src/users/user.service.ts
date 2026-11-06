@@ -42,14 +42,13 @@ export class UserService {
 
     const userId = authData.user.id;
 
-    //criar no public.users (client administrativo, com a service_role)
+    // A linha em public.users já é criada pelo trigger on_auth_user_created
+    // (handle_new_user, com nivel 99 e nome 'user'). Aqui só preenchemos o nome:
+    // um INSERT colidiria com a linha do trigger (23505) e disparava o rollback.
     const { data: publicData, error: publicError } = await this.supabaseService.client
       .from('users')
-      .insert([{
-        id: userId,
-        email: email,
-        nome: nome
-      }])
+      .update({ nome })
+      .eq('id', userId)
       .select('id, nome, email')
       .single();
 
@@ -57,6 +56,7 @@ export class UserService {
       console.error('Erro ao gravar usuário em public.users:', publicError.message);
       // desfaz o registro no auth para não deixar conta sem perfil
       await this.supabaseService.client.auth.admin.deleteUser(userId);
+      await this.supabaseService.client.from('users').delete().eq('id', userId);
       throw new BadRequestException(MSG.USUARIO_CRIAR_FALHOU);
     }
 
